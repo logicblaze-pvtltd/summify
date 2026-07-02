@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 250" width="100%" height="100%">
+  <defs>
+    <!-- Smooth brand gradient from vibrant mint to deep emerald -->
+    <linearGradient id="sumifyGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#47AF8F" />
+      <stop offset="100%" stop-color="#067357" />
+    </linearGradient>
+
+    <!-- Drop shadow utilizing the deep slate palette for organic depth -->
+    <filter id="softShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="3" dy="8" stdDeviation="6" flood-color="#121929" flood-opacity="0.12" />
+    </filter>
+  </defs>
+
+  <!-- Optional Canvas Background (Comment out if transparent is preferred) -->
+  <rect width="100%" height="100%" fill="#F5F6FB" rx="24" />
+
+  <!-- LOGO ICON -->
+  <g transform="translate(50, 45)" filter="url(#softShadow)">
+    <!-- Back Layer: Represents the original massive PDF document -->
+    <rect x="10" y="10" width="95" height="135" rx="14" fill="#067357" opacity="0.2" />
+    
+    <!-- Middle Layer: The processing/summarization phase -->
+    <rect x="26" y="25" width="95" height="115" rx="12" fill="url(#sumifyGradient)" opacity="0.4" />
+
+    <!-- Foreground Layer: The final, concise condensed summary output -->
+    <rect x="42" y="40" width="95" height="95" rx="10" fill="#121929" />
+
+    <!-- Summary Lines (Abstract representation of text tapering down into key takeaways) -->
+    <line x1="62" y1="68" x2="112" y2="68" stroke="#F5F6FB" stroke-width="5.5" stroke-linecap="round" opacity="0.9" />
+    <line x1="62" y1="85" x2="102" y2="85" stroke="#F5F6FB" stroke-width="5.5" stroke-linecap="round" opacity="0.9" />
+    
+    <!-- The Golden Nugget / The Key Insight Highlighted -->
+    <line x1="62" y1="102" x2="87" y2="102" stroke="url(#sumifyGradient)" stroke-width="6.5" stroke-linecap="round" />
+  </g>
+
+  <!-- TYPOGRAPHY -->
+  <!-- "Sum" anchors the name in your dark slate, while "ify" takes the mint/emerald gradient -->
+  <text x="215" y="152" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" font-size="92" font-weight="800" fill="#121929" letter-spacing="-2.5">
+    Sum<tspan fill="url(#sumifyGradient)">ify</tspan>
+  </text>
+
+  <!-- Subtitle tracking for a clean tech look -->
+  <text x="220" y="192" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" font-size="18" font-weight="700" fill="#067357" letter-spacing="5" opacity="0.8">
+    PDF SUMMARIZER
+  </text>
+</svg>

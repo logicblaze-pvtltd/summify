@@ -1,0 +1,148 @@
+/* Custom styling for LocalAI PDF */
+
+body {
+  margin: 0;
+  font-family: 'Inter', sans-serif;
+}
+
+/* Smooth theme transitions */
+* {
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+/* Light mode refinements */
+::selection {
+  background-color: var(--primary-container);
+  color: var(--on-primary-container);
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover);
+}
+
+/* Focus ring refinement */
+*:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+/* ─────────────────────────────────────────────
+   Refined Dark Mode Overrides
+   Uses CSS variables defined in index.html
+   ───────────────────────────────────────────── */
+.dark-mode {
+  color: var(--on-surface);
+  background-color: var(--background);
+}
+
+/* Glassmorphism refinement */
+.dark-mode .glass-card {
+  background: var(--glass-bg);
+  border-color: var(--glass-border);
+  box-shadow: 0 8px 32px 0 var(--glass-shadow);
+}
+
+/* Override hardcoded white backgrounds (common utility) */
+.dark-mode .bg-white {
+  background-color: var(--surface-container-highest) !important;
+}
+.dark-mode .bg-white\/80 {
+  background-color: color-mix(in srgb, var(--surface-container-highest) 80%, transparent) !important;
+}
+.dark-mode .bg-white\/90 {
+  background-color: color-mix(in srgb, var(--surface-container-highest) 90%, transparent) !important;
+}
+.dark-mode .bg-white\/60 {
+  background-color: color-mix(in srgb, var(--surface-container-highest) 60%, transparent) !important;
+}
+
+/* Override hardcoded text colors */
+.dark-mode .text-\[\#121929\] {
+  color: var(--on-surface) !important;
+}
+
+/* Border refinements */
+.dark-mode .border-outline-variant {
+  border-color: var(--outline-variant) !important;
+}
+.dark-mode .border-gray-300 {
+  border-color: var(--outline-variant) !important;
+}
+
+/* Text-on-surface-variant should map to dark muted text */
+.dark-mode .text-on-surface-variant {
+  color: var(--on-surface-variant) !important;
+}
+
+/* High contrast utility */
+.dark-mode .text-high-contrast {
+  color: var(--on-surface) !important;
+}
+
+/* Sidebar & Header structural overrides (keep !important to beat inline bg colors) */
+.dark-mode aside {
+  background-color: var(--surface-container-low) !important;
+  border-color: var(--outline-variant) !important;
+}
+.dark-mode header {
+  background-color: var(--surface-container-highest) !important;
+}
+
+/* Toggle switch pseudo-element refinements */
+.dark-mode .after\:bg-white::after {
+  background-color: var(--surface-container-highest) !important;
+}
+.dark-mode .after\:border-gray-300::after {
+  border-color: var(--outline-variant) !important;
+}
+
+/* Red tint backgrounds */
+.dark-mode .bg-red-500\/5 {
+  background-color: color-mix(in srgb, var(--error) 5%, transparent) !important;
+}
+.dark-mode .bg-red-500\/10 {
+  background-color: color-mix(in srgb, var(--error) 10%, transparent) !important;
+}
+
+/* Hardcoded drop-zone gradient (Dashboard inline style) */
+.dark-mode #drop-zone {
+  background: linear-gradient(135deg, var(--glass-bg) 0%, color-mix(in srgb, var(--surface-container) 60%, transparent) 100%) !important;
+}
+
+/* Shadow overrides for hardcoded utility shadows */
+.dark-mode .shadow-\[0_1px_3px_rgba\(0\,0\,0\,0\.05\)\] {
+  box-shadow: 0 1px 3px var(--shadow-pro) !important;
+}
+.dark-mode .shadow-\[0_1px_3px_rgba\(0\,0\,0\,0\.05\)\]\, \.dark-mode .shadow-\[0_1px_3px_rgba\(0\,0\,0\,0\.05\)\] {
+  box-shadow: 0 1px 3px var(--shadow-pro) !important;
+}
+
+/* Scrollbar refinements */
+.dark-mode ::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+}
+.dark-mode ::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover);
+}
+
+/* Selection color */
+.dark-mode ::selection {
+  background-color: var(--primary-container);
+  color: var(--on-primary-container);
+}
+
+/* Inline code blocks */
+.dark-mode code {
+  background-color: var(--surface-container-high);
+  color: var(--on-surface);
+}

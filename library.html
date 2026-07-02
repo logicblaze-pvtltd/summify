@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&amp;family=JetBrains+Mono:wght@400&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "tertiary": "#575e71",
+                        "outline": "#6e7a74",
+                        "on-primary-fixed": "#002117",
+                        "tertiary-fixed-dim": "#bfc6dc",
+                        "error-container": "#ffdad6",
+                        "surface-container-lowest": "#ffffff",
+                        "primary": "#006c53",
+                        "surface-tint": "#006c53",
+                        "surface-container": "#eceef3",
+                        "on-secondary-fixed": "#002116",
+                        "secondary-fixed-dim": "#7fd7b6",
+                        "on-primary-container": "#003d2e",
+                        "on-secondary-container": "#007055",
+                        "surface-dim": "#d8dadf",
+                        "inverse-primary": "#73d9b7",
+                        "primary-fixed-dim": "#73d9b7",
+                        "surface-bright": "#f8f9fe",
+                        "on-error-container": "#93000a",
+                        "error": "#ba1a1a",
+                        "surface-container-highest": "#e1e2e7",
+                        "on-secondary": "#ffffff",
+                        "outline-variant": "#bdc9c2",
+                        "inverse-surface": "#2e3134",
+                        "on-tertiary-fixed-variant": "#404759",
+                        "inverse-on-surface": "#eff0f5",
+                        "surface-container-low": "#f2f3f8",
+                        "secondary-container": "#98f1ce",
+                        "surface-container-high": "#e7e8ed",
+                        "on-primary": "#ffffff",
+                        "tertiary-fixed": "#dce2f9",
+                        "on-background": "#191c1f",
+                        "secondary": "#006c51",
+                        "surface": "#f8f9fe",
+                        "on-tertiary-container": "#2e3546",
+                        "surface-variant": "#e1e2e7",
+                        "primary-container": "#47af8f",
+                        "on-error": "#ffffff",
+                        "on-secondary-fixed-variant": "#00513c",
+                        "tertiary-container": "#969db2",
+                        "on-primary-fixed-variant": "#00513e",
+                        "primary-fixed": "#90f6d2",
+                        "background": "#f8f9fe",
+                        "on-surface-variant": "#3e4944",
+                        "secondary-fixed": "#9bf4d1",
+                        "on-tertiary-fixed": "#141b2b",
+                        "on-tertiary": "#ffffff",
+                        "on-surface": "#191c1f",
+                        "high-contrast": "#121929"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "10px",
+                        "xl": "12px",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "margin-desktop": "24px",
+                        "sidebar-width": "280px",
+                        "sidebar-collapsed-width": "80px",
+                        "inspector-width": "320px",
+                        "gutter": "16px",
+                        "base": "4px"
+                    },
+                    "fontFamily": {
+                        "headline-md": ["Inter"],
+                        "mono-code": ["JetBrains Mono"],
+                        "body-md": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "label-caps": ["Inter"],
+                        "title-sm": ["Inter"],
+                        "display-lg": ["Inter"]
+                    },
+                    "fontSize": {
+                        "headline-md": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                        "mono-code": ["13px", {"lineHeight": "20px", "fontWeight": "400"}],
+                        "body-md": ["15px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "body-sm": ["13px", {"lineHeight": "20px", "fontWeight": "400"}],
+                        "label-caps": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                        "title-sm": ["18px", {"lineHeight": "24px", "fontWeight": "600"}],
+                        "display-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700"}]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .selection-active {
+            background-color: rgba(0, 108, 83, 0.05);
+            border-color: #006c53 !important;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #bdc9c2;
+            border-radius: 10px;
+        }
+        .card-hover-lift:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+        }
+        
+        /* Collapsible Sidebar Styles */
+        #sidebar {
+            transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .sidebar-label {
+            transition: opacity 0.2s ease, visibility 0.2s;
+        }
+        .collapsed .sidebar-label, .collapsed .sidebar-header-text, .collapsed .sidebar-footer-text {
+            opacity: 0;
+            visibility: hidden;
+            width: 0;
+            display: none;
+        }
+        .collapsed #new-summary-text {
+            display: none;
+        }
+        .collapsed #new-summary-btn {
+            padding-left: 0;
+            padding-right: 0;
+            width: 48px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-surface font-body-md selection:bg-primary-container/30">
+<div class="flex min-h-screen">
+<!-- SideNavBar -->
+<aside class="w-[280px] h-screen sticky left-0 top-0 border-r border-outline-variant bg-surface flex flex-col py-6 px-4 z-40" id="sidebar">
+<div class="mb-8 px-2 flex items-center justify-between">
+<div class="sidebar-header-text overflow-hidden">
+<h1 class="text-title-sm font-title-sm font-bold text-primary truncate">LocalAI PDF</h1>
+<p class="text-[11px] text-outline font-label-caps tracking-widest uppercase truncate">Secure Summarization</p>
+</div>
+<button class="p-2 hover:bg-surface-container-high rounded-lg text-outline transition-colors" onclick="toggleSidebar()" title="Toggle Sidebar">
+<span class="material-symbols-outlined" id="toggle-icon">menu_open</span>
+</button>
+</div>
+<button class="mb-8 flex items-center justify-center gap-2 bg-primary text-on-primary py-3 px-4 rounded-lg font-bold active:scale-[0.98] transition-all shadow-sm" id="new-summary-btn">
+<span class="material-symbols-outlined text-[20px]">add</span>
+<span class="font-body-md" id="new-summary-text">New Summary</span>
+</button>
+<nav class="flex-1 space-y-1">
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high transition-colors duration-200" href="#" title="Dashboard">
+<span class="material-symbols-outlined shrink-0">dashboard</span>
+<span class="sidebar-label text-body-sm font-body-sm">Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-secondary-container/12 border-l-2 border-primary text-primary font-bold transition-colors duration-200" href="#" title="My Library">
+<span class="material-symbols-outlined shrink-0" style="font-variation-settings: 'FILL' 1;">library_books</span>
+<span class="sidebar-label text-body-sm font-body-sm">My Library</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high transition-colors duration-200" href="#" title="Recents">
+<span class="material-symbols-outlined shrink-0">history</span>
+<span class="sidebar-label text-body-sm font-body-sm">Recents</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high transition-colors duration-200" href="#" title="Settings">
+<span class="material-symbols-outlined shrink-0">settings</span>
+<span class="sidebar-label text-body-sm font-body-sm">Settings</span>
+</a>
+</nav>
+<div class="pt-6 border-t border-outline-variant">
+<div class="flex items-center gap-3 px-2">
+<div class="w-10 h-10 rounded-full bg-surface-container-highest flex items-center justify-center overflow-hidden border border-outline-variant shrink-0">
+<img class="w-full h-full object-cover" data-alt="A professional close-up studio portrait" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBmty88an70KSzrLZglMtGE3X-M6BjxnU0gGgSHWVgyx-iN10DIMvetpcz6KqzsRzEPpcWQ30IH1ak7oMiM64TFis8CE-61srTj-bHVDGaOwOtrgVcy1BOYwPS3F_2WSgPatl3AurBFoZxlhvJ8X8qCg1ue7bj91BoUTiMA4GOfAwsynkfzGE0-CDSUN4cBkd15iB88i_zE0A_9sg0y6i6ztT15ARZkNJDerTmnhkdF9a-xYnedgFoE2Ftd6d-_4wuWKB3512B3Cg"/>
+</div>
+<div class="sidebar-footer-text flex-1 overflow-hidden">
+<p class="text-body-sm font-bold text-high-contrast truncate">Alex Rivers</p>
+<p class="text-[11px] text-outline truncate">Pro Plan · Local-Only</p>
+</div>
+</div>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="flex-1 flex flex-col min-w-0 bg-background">
+<!-- TopNavBar -->
+<header class="h-16 w-full sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-outline-variant flex items-center justify-between px-margin-desktop">
+<div class="flex items-center flex-1 max-w-2xl">
+<div class="relative w-full group">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline group-focus-within:text-primary transition-colors">search</span>
+<input class="w-full pl-10 pr-4 py-2 bg-surface-container-low border border-outline-variant rounded-lg text-body-md focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all placeholder:text-outline/60" placeholder="Search within document summaries..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-4 ml-6">
+<button class="p-2 text-outline hover:bg-surface-container-low rounded-full transition-colors">
+<span class="material-symbols-outlined">rss_feed</span>
+</button>
+<button class="p-2 text-outline hover:bg-surface-container-low rounded-full transition-colors">
+<span class="material-symbols-outlined">account_circle</span>
+</button>
+</div>
+</header>
+<!-- Scrollable Content -->
+<div class="flex-1 overflow-y-auto p-margin-desktop custom-scrollbar">
+<!-- Library Header & Actions -->
+<div class="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8">
+<div>
+<h2 class="text-display-lg font-display-lg text-high-contrast">My Library</h2>
+<p class="text-body-md text-tertiary mt-1">Manage and organize your locally processed intelligence.</p>
+</div>
+<div class="flex flex-wrap items-center gap-2">
+<div class="flex items-center bg-surface-container-low border border-outline-variant rounded-lg p-1">
+<button class="flex items-center gap-1.5 px-3 py-1.5 hover:bg-white rounded-md text-body-sm text-on-surface-variant transition-all">
+<span class="material-symbols-outlined text-[18px]">calendar_today</span>
+<span>Date</span>
+<span class="material-symbols-outlined text-[16px]">expand_more</span>
+</button>
+<button class="flex items-center gap-1.5 px-3 py-1.5 hover:bg-white rounded-md text-body-sm text-on-surface-variant transition-all">
+<span class="material-symbols-outlined text-[18px]">filter_list</span>
+<span>Topic</span>
+<span class="material-symbols-outlined text-[16px]">expand_more</span>
+</button>
+<button class="flex items-center gap-1.5 px-3 py-1.5 hover:bg-white rounded-md text-body-sm text-on-surface-variant transition-all">
+<span class="material-symbols-outlined text-[18px]">straighten</span>
+<span>Size</span>
+<span class="material-symbols-outlined text-[16px]">expand_more</span>
+</button>
+</div>
+<div class="h-8 w-[1px] bg-outline-variant mx-1"></div>
+<div class="flex items-center bg-surface-container-low border border-outline-variant rounded-lg p-1">
+<button class="p-1.5 text-primary bg-white rounded-md shadow-sm transition-all">
+<span class="material-symbols-outlined">grid_view</span>
+</button>
+<button class="p-1.5 text-outline hover:text-on-surface-variant transition-all">
+<span class="material-symbols-outlined">view_list</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Selection Toolbar (Hidden by default) -->
+<div class="hidden flex items-center justify-between bg-on-primary-container text-white px-6 py-3 rounded-xl mb-6 shadow-lg animate-in fade-in slide-in-from-top-4 duration-300" id="selection-toolbar">
+<div class="flex items-center gap-4">
+<span class="font-bold text-body-md"><span id="selected-count">0</span> items selected</span>
+<div class="h-4 w-[1px] bg-white/20"></div>
+<button class="flex items-center gap-1.5 text-body-sm hover:text-secondary-container transition-colors">
+<span class="material-symbols-outlined text-[20px]">folder_open</span>
+                        Group into Folders
+                    </button>
+<button class="flex items-center gap-1.5 text-body-sm hover:text-secondary-container transition-colors">
+<span class="material-symbols-outlined text-[20px]">ios_share</span>
+                        Export
+                    </button>
+</div>
+<div class="flex items-center gap-3">
+<button class="flex items-center gap-1.5 text-body-sm text-red-200 hover:text-white transition-colors">
+<span class="material-symbols-outlined text-[20px]">delete</span>
+                        Delete Permanent
+                    </button>
+<button class="p-1 hover:bg-white/10 rounded-full transition-colors" onclick="clearSelection()">
+<span class="material-symbols-outlined text-[20px]">close</span>
+</button>
+</div>
+</div>
+<!-- Bento Grid File Manager -->
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-gutter">
+<!-- File Cards as before -->
+<div class="group relative bg-white border border-outline-variant rounded-xl p-4 transition-all duration-300 cursor-pointer file-card card-hover-lift" onclick="toggleSelection(this)">
+<div class="absolute top-3 right-3 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
+<div class="w-6 h-6 rounded-full border-2 border-outline-variant bg-white flex items-center justify-center check-box shadow-sm">
+<span class="material-symbols-outlined text-[16px] text-white scale-0 transition-transform">check</span>
+</div>
+</div>
+<div class="aspect-[3/2] w-full bg-surface-container-low rounded-lg mb-4 flex items-center justify-center overflow-hidden border border-outline-variant/30 ring-1 ring-inset ring-black/5">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" data-alt="Q3 Financial Audit thumbnail" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBcDP7FOBQ2EACCoJmiARwRw74zJxW77ryjzBHCN5iuWmibmMi6ktmXfYeX5fKHf3YG_tG2_Tl0V3GAnQfyK8RjryyoAk3JMpxY9H02rPQSlCzihz83u-FTBcKCIOqzUKW_AoyE2I4JxNTUZQQkfeWKRUE-EGOQHQ6K5ZSMoy4eAAyOhxGooV4XJw5VUv84Fm1twISNU5Be8fB0NA_iJDl6hHTfSEuAzL3_nlGqdixSo7IR5U9eULzd0PSowT48AgPQaQIMJ4zrLA"/>
+</div>
+<div class="flex items-start justify-between gap-2 mb-3">
+<div class="min-w-0">
+<h3 class="font-bold text-high-contrast text-body-md truncate">Q3_Financial_Audit_v2.pdf</h3>
+<p class="text-[11px] text-outline mt-0.5 uppercase tracking-wider font-label-caps">2.4 MB • Oct 12, 2023</p>
+</div>
+<span class="shrink-0 px-2.5 py-0.5 rounded-full bg-primary/10 text-primary text-[10px] font-bold border border-primary/20">Summarized</span>
+</div>
+<div class="pt-3 border-t border-outline-variant/40 flex flex-wrap gap-1.5">
+<span class="px-2 py-0.5 rounded bg-surface-container text-on-surface-variant text-[11px] font-medium hover:bg-surface-container-high transition-colors">#Revenue</span>
+<span class="px-2 py-0.5 rounded bg-surface-container text-on-surface-variant text-[11px] font-medium hover:bg-surface-container-high transition-colors">#Liability</span>
+</div>
+</div>
+<!-- Repeat other cards... (simplified for brevity but keeping structure) -->
+<div class="group relative bg-white border border-outline-variant rounded-xl p-4 transition-all duration-300 cursor-pointer file-card card-hover-lift" onclick="toggleSelection(this)">
+<div class="absolute top-3 right-3 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
+<div class="w-6 h-6 rounded-full border-2 border-outline-variant bg-white flex items-center justify-center check-box shadow-sm">
+<span class="material-symbols-outlined text-[16px] text-white scale-0 transition-transform">check</span>
+</div>
+</div>
+<div class="aspect-[3/2] w-full bg-surface-container-low rounded-lg mb-4 flex items-center justify-center overflow-hidden border border-outline-variant/30 ring-1 ring-inset ring-black/5">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" data-alt="ML Architecture Notes thumbnail" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDAIdzes-G0IbJYPWI2nUqvfGGBZUWyCT1pDhMBGYfQjITH4LsTiU2kD2bk5ngkVSSYRgwvv-PyDKpLM021sc1m5R8SLbMNbclDGTQfc2Vj44-6xcND2kYK4WTNxtrXuC5uGSVtwYCrkJ1X8lbxY7af1iba0N9VwZCxPjli3sSJk1Eu7tucCr-03idOTMgKwwYccVBokSOoxOFXlZQx1qiygGqNwomAgXYqDH8FYp99r3gWB1f6rNgMo8GeiG97pdP6ordYAWncIw"/>
+</div>
+<div class="flex items-start justify-between gap-2 mb-3">
+<div class="min-w-0">
+<h3 class="font-bold text-high-contrast text-body-md truncate">ML_Architecture_Notes.pdf</h3>
+<p class="text-[11px] text-outline mt-0.5 uppercase tracking-wider font-label-caps">1.8 MB • Oct 10, 2023</p>
+</div>
+<span class="shrink-0 px-2.5 py-0.5 rounded-full bg-primary/10 text-primary text-[10px] font-bold border border-primary/20">Summarized</span>
+</div>
+<div class="pt-3 border-t border-outline-variant/40 flex flex-wrap gap-1.5">
+<span class="px-2 py-0.5 rounded bg-surface-container text-on-surface-variant text-[11px] font-medium hover:bg-surface-container-high transition-colors">#AI</span>
+<span class="px-2 py-0.5 rounded bg-surface-container text-on-surface-variant text-[11px] font-medium hover:bg-surface-container-high transition-colors">#NeuralNets</span>
+</div>
+</div>
+<div class="group relative bg-white border border-outline-variant rounded-xl p-4 transition-all duration-300 cursor-pointer file-card card-hover-lift" onclick="toggleSelection(this)">
+<div class="absolute top-3 right-3 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
+<div class="w-6 h-6 rounded-full border-2 border-outline-variant bg-white flex items-center justify-center check-box shadow-sm">
+<span class="material-symbols-outlined text-[16px] text-white scale-0 transition-transform">check</span>
+</div>
+</div>
+<div class="aspect-[3/2] w-full bg-surface-container-low rounded-lg mb-4 flex items-center justify-center overflow-hidden border border-outline-variant/30 ring-1 ring-inset ring-black/5">
+<div class="flex items-center justify-center h-full w-full bg-surface-container-highest">
+<span class="material-symbols-outlined text-outline/40 text-[64px]">picture_as_pdf</span>
+</div>
+</div>
+<div class="flex items-start justify-between gap-2 mb-3">
+<div class="min-w-0">
+<h3 class="font-bold text-high-contrast text-body-md truncate">Project_Mars_Proposal.pdf</h3>
+<p class="text-[11px] text-outline mt-0.5 uppercase tracking-wider font-label-caps">15.2 MB • Oct 05, 2023</p>
+</div>
+<span class="shrink-0 px-2.5 py-0.5 rounded-full bg-outline-variant/20 text-outline text-[10px] font-bold">Draft</span>
+</div>
+<div class="pt-3 border-t border-outline-variant/40 flex flex-wrap gap-1.5">
+<span class="px-2 py-0.5 rounded bg-surface-container text-on-surface-variant text-[11px] font-medium hover:bg-surface-container-high transition-colors">#Space</span>
+<span class="px-2 py-0.5 rounded bg-surface-container text-on-surface-variant text-[11px] font-medium hover:bg-surface-container-high transition-colors">#Planning</span>
+</div>
+</div>
+<div class="group relative bg-white border border-outline-variant rounded-xl p-4 transition-all duration-300 cursor-pointer file-card card-hover-lift" onclick="toggleSelection(this)">
+<div class="absolute top-3 right-3 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
+<div class="w-6 h-6 rounded-full border-2 border-outline-variant bg-white flex items-center justify-center check-box shadow-sm">
+<span class="material-symbols-outlined text-[16px] text-white scale-0 transition-transform">check</span>
+</div>
+</div>
+<div class="aspect-[3/2] w-full bg-surface-container-low rounded-lg mb-4 flex items-center justify-center overflow-hidden border border-outline-variant/30 ring-1 ring-inset ring-black/5">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" data-alt="Term Sheet thumbnail" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD2tOsONLhiK73I5y2hcyatB9BvERCTQDC_o7k-F3xklBq4s7oWTSFaEelyQkihUXuj92xuqp64dPQBSon43SO4J02U3c8V5S_bq9QpqRQWZmJvQK4DfbZneNFEuejWjFMSnTGRlmLX54gy4Kz-SoHHk8DI3ty8jtUC5BrX4zbqTyu72SA7dkNEzmaPP7b3lEFq8Ccyxlw-MNLWogGOA-nNJySgd1pLsJyIxIqONhKTlMGXXwt5qJ6WSPBj5WoTKRth3nBEYRqLaw"/>
+</div>
+<div class="flex items-start justify-between gap-2 mb-3">
+<div class="min-w-0">
+<h3 class="font-bold text-high-contrast text-body-md truncate">Term_Sheet_Final.pdf</h3>
+<p class="text-[11px] text-outline mt-0.5 uppercase tracking-wider font-label-caps">850 KB • Sep 28, 2023</p>
+</div>
+<span class="shrink-0 px-2.5 py-0.5 rounded-full bg-primary/10 text-primary text-[10px] font-bold border border-primary/20">Summarized</span>
+</div>
+<div class="pt-3 border-t border-outline-variant/40 flex flex-wrap gap-1.5">
+<span class="px-2 py-0.5 rounded bg-surface-container text-on-surface-variant text-[11px] font-medium hover:bg-surface-container-high transition-colors">#Legal</span>
+<span class="px-2 py-0.5 rounded bg-surface-container text-on-surface-variant text-[11px] font-medium hover:bg-surface-container-high transition-colors">#Venture</span>
+</div>
+</div>
+</div>
+</div>
+</main>
+</div>
+<script>
+    let selectedItems = new Set();
+    const toolbar = document.getElementById('selection-toolbar');
+    const countSpan = document.getElementById('selected-count');
+    const sidebar = document.getElementById('sidebar');
+    const toggleIcon = document.getElementById('toggle-icon');
+
+    function toggleSidebar() {
+        const isCollapsed = sidebar.classList.toggle('collapsed');
+        if (isCollapsed) {
+            sidebar.style.width = '80px';
+            toggleIcon.textContent = 'menu';
+        } else {
+            sidebar.style.width = '280px';
+            toggleIcon.textContent = 'menu_open';
+        }
+    }
+
+    function toggleSelection(card) {
+        const fileName = card.querySelector('h3').textContent;
+        const checkBox = card.querySelector('.check-box');
+        const checkIcon = checkBox.querySelector('span');
+
+        if (selectedItems.has(fileName)) {
+            selectedItems.delete(fileName);
+            card.classList.remove('selection-active');
+            checkBox.classList.remove('bg-primary', 'border-primary');
+            checkBox.classList.add('bg-white', 'border-outline-variant');
+            checkIcon.classList.add('scale-0');
+        } else {
+            selectedItems.add(fileName);
+            card.classList.add('selection-active');
+            checkBox.classList.remove('bg-white', 'border-outline-variant');
+            checkBox.classList.add('bg-primary', 'border-primary');
+            checkIcon.classList.remove('scale-0');
+        }
+
+        updateToolbar();
+    }
+
+    function updateToolbar() {
+        const count = selectedItems.size;
+        countSpan.textContent = count;
+        
+        if (count > 0) {
+            toolbar.classList.remove('hidden');
+        } else {
+            toolbar.classList.add('hidden');
+        }
+    }
+
+    function clearSelection() {
+        const cards = document.querySelectorAll('.file-card');
+        cards.forEach(card => {
+            const checkBox = card.querySelector('.check-box');
+            const checkIcon = checkBox.querySelector('span');
+            
+            card.classList.remove('selection-active');
+            checkBox.classList.remove('bg-primary', 'border-primary');
+            checkBox.classList.add('bg-white', 'border-outline-variant');
+            checkIcon.classList.add('scale-0');
+        });
+        selectedItems.clear();
+        updateToolbar();
+    }
+
+    // Search highlight interaction
+    const searchInput = document.querySelector('input[type="text"]');
+    searchInput.addEventListener('input', (e) => {
+        const query = e.target.value.toLowerCase();
+        const cards = document.querySelectorAll('.file-card');
+        
+        cards.forEach(card => {
+            const title = card.querySelector('h3').textContent.toLowerCase();
+            const tagElements = card.querySelectorAll('.pt-3 span');
+            const tags = Array.from(tagElements).map(s => s.textContent.toLowerCase());
+            
+            if (title.includes(query) || tags.some(t => t.includes(query))) {
+                card.style.display = 'block';
+            } else {
+                card.style.display = 'none';
+            }
+        });
+    });
+</script>
+</body></html>

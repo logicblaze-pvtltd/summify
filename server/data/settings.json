@@ -1,0 +1,7 @@
+{
+  "activeModel": "Gemini 2.5 Flash",
+  "processingCore": "GPU (Metal/CUDA)",
+  "geminiApiKey": "",
+  "autoPurgeDays": "Never",
+  "onDiskEncryption": true
+}

@@ -1,0 +1,289 @@
+<!doctype html>
+<html lang="en" class="light">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>LocalAI PDF - Secure Summarization</title>
+    <!-- Tailwind CSS with Forms and Container Queries plugins -->
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    
+    <!-- Exact Tailwind Configuration from user templates -->
+    <script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+              "tertiary": "var(--tertiary)",
+              "outline": "var(--outline)",
+              "on-primary-fixed": "var(--on-primary-fixed)",
+              "tertiary-fixed-dim": "var(--tertiary-fixed-dim)",
+              "error-container": "var(--error-container)",
+              "surface-container-lowest": "var(--surface-container-lowest)",
+              "primary": "var(--primary)",
+              "surface-tint": "var(--surface-tint)",
+              "surface-container": "var(--surface-container)",
+              "on-secondary-fixed": "var(--on-secondary-fixed)",
+              "secondary-fixed-dim": "var(--secondary-fixed-dim)",
+              "on-primary-container": "var(--on-primary-container)",
+              "on-secondary-container": "var(--on-secondary-container)",
+              "surface-dim": "var(--surface-dim)",
+              "inverse-primary": "var(--inverse-primary)",
+              "primary-fixed-dim": "var(--primary-fixed-dim)",
+              "surface-bright": "var(--surface-bright)",
+              "on-error-container": "var(--on-error-container)",
+              "error": "var(--error)",
+              "surface-container-highest": "var(--surface-container-highest)",
+              "on-secondary": "var(--on-secondary)",
+              "outline-variant": "var(--outline-variant)",
+              "inverse-surface": "var(--inverse-surface)",
+              "on-tertiary-fixed-variant": "var(--on-tertiary-fixed-variant)",
+              "inverse-on-surface": "var(--inverse-on-surface)",
+              "surface-container-low": "var(--surface-container-low)",
+              "secondary-container": "var(--secondary-container)",
+              "surface-container-high": "var(--surface-container-high)",
+              "on-primary": "var(--on-primary)",
+              "tertiary-fixed": "var(--tertiary-fixed)",
+              "on-background": "var(--on-background)",
+              "secondary": "var(--secondary)",
+              "surface": "var(--surface)",
+              "on-tertiary-container": "var(--on-tertiary-container)",
+              "surface-variant": "var(--surface-variant)",
+              "primary-container": "var(--primary-container)",
+              "on-error": "var(--on-error)",
+              "on-secondary-fixed-variant": "var(--on-secondary-fixed-variant)",
+              "tertiary-container": "var(--tertiary-container)",
+              "on-primary-fixed-variant": "var(--on-primary-fixed-variant)",
+              "primary-fixed": "var(--primary-fixed)",
+              "background": "var(--background)",
+              "on-surface-variant": "var(--on-surface-variant)",
+              "secondary-fixed": "var(--secondary-fixed)",
+              "on-tertiary-fixed": "var(--on-tertiary-fixed)",
+              "on-tertiary": "var(--on-tertiary)",
+              "on-surface": "var(--on-surface)",
+              "brand-green": "var(--brand-green)"
+            },
+            "borderRadius": {
+              "DEFAULT": "0.25rem",
+              "lg": "0.5rem",
+              "xl": "0.75rem",
+              "2xl": "1rem",
+              "3xl": "1.5rem",
+              "full": "9999px"
+            },
+            "spacing": {
+              "margin-desktop": "32px",
+              "sidebar-width": "280px",
+              "inspector-width": "320px",
+              "gutter": "20px",
+              "base": "4px"
+            },
+            "fontFamily": {
+              "headline-md": ["Inter"],
+              "mono-code": ["JetBrains Mono"],
+              "body-md": ["Inter"],
+              "body-sm": ["Inter"],
+              "label-caps": ["Inter"],
+              "title-sm": ["Inter"],
+              "display-lg": ["Inter"]
+            },
+            "fontSize": {
+              "headline-md": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+              "mono-code": ["13px", {"lineHeight": "20px", "fontWeight": "400"}],
+              "body-md": ["15px", {"lineHeight": "24px", "fontWeight": "400"}],
+              "body-sm": ["13px", {"lineHeight": "20px", "fontWeight": "400"}],
+              "label-caps": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600"}],
+              "title-sm": ["18px", {"lineHeight": "24px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+              "display-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.03em", "fontWeight": "800"}]
+            }
+          },
+        },
+      }
+    </script>
+    
+    <!-- Google Fonts and Material Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400&family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
+    
+    <style>
+      :root {
+        --primary: #007A5E;
+        --on-primary: #ffffff;
+        --primary-container: #3DBB96;
+        --on-primary-container: #002A1F;
+        --secondary: #007A5E;
+        --on-secondary: #ffffff;
+        --secondary-container: #8FE5C8;
+        --on-secondary-container: #004D3A;
+        --tertiary: #555E70;
+        --on-tertiary: #ffffff;
+        --tertiary-container: #A2AABE;
+        --on-tertiary-container: #1E2433;
+        --error: #BA1A1A;
+        --on-error: #ffffff;
+        --error-container: #FFDAD6;
+        --on-error-container: #93000A;
+        --surface: #F5F7FA;
+        --on-surface: #1A1D21;
+        --surface-variant: #E0E3E8;
+        --on-surface-variant: #4A5058;
+        --outline: #8A9199;
+        --outline-variant: #C5C9D0;
+        --background: #F3F5F9;
+        --on-background: #1A1D21;
+        --inverse-surface: #2E3134;
+        --inverse-on-surface: #F0F1F5;
+        --inverse-primary: #73D9B7;
+        --surface-tint: #007A5E;
+        --surface-dim: #D1D5DB;
+        --surface-bright: #FFFFFF;
+        --surface-container: #EFF1F5;
+        --surface-container-low: #FAFBFC;
+        --surface-container-high: #E5E8ED;
+        --surface-container-highest: #DEE1E7;
+        --surface-container-lowest: #FFFFFF;
+        --primary-fixed: #90F6D2;
+        --primary-fixed-dim: #73D9B7;
+        --on-primary-fixed: #002117;
+        --on-primary-fixed-variant: #00513E;
+        --secondary-fixed: #9BF4D1;
+        --secondary-fixed-dim: #7FD7B6;
+        --on-secondary-fixed: #002116;
+        --on-secondary-fixed-variant: #00513C;
+        --tertiary-fixed: #DCE2F9;
+        --tertiary-fixed-dim: #BFC6DC;
+        --on-tertiary-fixed: #141B2B;
+        --on-tertiary-fixed-variant: #404759;
+        --brand-green: #3DBB96;
+        --glass-bg: rgba(255, 255, 255, 0.85);
+        --glass-border: rgba(255, 255, 255, 0.6);
+        --glass-shadow: rgba(31, 38, 135, 0.06);
+        --shadow-pro: rgba(0, 0, 0, 0.06);
+        --shadow-pro-hover: rgba(0, 0, 0, 0.10);
+        --scrollbar-thumb: #C5C9D0;
+        --scrollbar-thumb-hover: #8A9199;
+        --drag-active-bg: rgba(61, 187, 150, 0.10);
+        --card-hover-lift: rgba(0, 0, 0, 0.08);
+        --white: #FFFFFF;
+        --black: #000000;
+      }
+
+      .dark {
+        --primary: #73d9b7;
+        --on-primary: #003828;
+        --primary-container: #00513c;
+        --on-primary-container: #90f6d2;
+        --secondary: #b1ccbf;
+        --on-secondary: #1d352b;
+        --secondary-container: #2d4c3f;
+        --on-secondary-container: #7fd7b6;
+        --tertiary: #bfc6dc;
+        --on-tertiary: #293042;
+        --tertiary-container: #3f4759;
+        --on-tertiary-container: #dce2f9;
+        --error: #ffb4ab;
+        --on-error: #690005;
+        --error-container: #93000a;
+        --on-error-container: #ffdad6;
+        --surface: #0f1412;
+        --on-surface: #e0e3e1;
+        --surface-variant: #3e4944;
+        --on-surface-variant: #bfc9c3;
+        --outline: #89938e;
+        --outline-variant: #3e4944;
+        --background: #030712;
+        --on-background: #e0e3e1;
+        --inverse-surface: #e0e3e1;
+        --inverse-on-surface: #2e3134;
+        --inverse-primary: #006c53;
+        --surface-tint: #73d9b7;
+        --surface-dim: #0f1412;
+        --surface-bright: #353a37;
+        --surface-container: #111f1a;
+        --surface-container-low: #0b1a15;
+        --surface-container-high: #1D293D;
+        --surface-container-highest: #0F172B;
+        --surface-container-lowest: #000000;
+        --primary-fixed: #90f6d2;
+        --primary-fixed-dim: #73d9b7;
+        --on-primary-fixed: #002117;
+        --on-primary-fixed-variant: #00513e;
+        --secondary-fixed: #9bf4d1;
+        --secondary-fixed-dim: #7fd7b6;
+        --on-secondary-fixed: #002116;
+        --on-secondary-fixed-variant: #00513c;
+        --tertiary-fixed: #dce2f9;
+        --tertiary-fixed-dim: #bfc6dc;
+        --on-tertiary-fixed: #141b2b;
+        --on-tertiary-fixed-variant: #404759;
+        --brand-green: #5ECBA8;
+        --glass-bg: rgba(18, 25, 41, 0.6);
+        --glass-border: rgba(255, 255, 255, 0.08);
+        --glass-shadow: rgba(0, 0, 0, 0.3);
+        --shadow-pro: rgba(0, 0, 0, 0.2);
+        --shadow-pro-hover: rgba(0, 0, 0, 0.35);
+        --scrollbar-thumb: #3e4944;
+        --scrollbar-thumb-hover: #6e7a74;
+        --drag-active-bg: rgba(61, 187, 150, 0.15);
+        --card-hover-lift: rgba(0, 0, 0, 0.3);
+        --white: #1a2234;
+        --black: #ffffff;
+      }
+
+      .material-symbols-outlined {
+        font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+      }
+      .fill-icon {
+        font-variation-settings: 'FILL' 1;
+      }
+      /* Glassmorphism Effect */
+      .glass-card {
+        background: var(--glass-bg);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1px solid var(--glass-border);
+        box-shadow: 0 8px 32px 0 var(--glass-shadow);
+      }
+      .drag-active {
+        border-color: var(--brand-green) !important;
+        background: var(--drag-active-bg) !important;
+      }
+      /* Refined Shadows */
+      .shadow-pro {
+        box-shadow: 0 10px 40px -10px var(--shadow-pro);
+      }
+      .shadow-pro-hover:hover {
+        box-shadow: 0 20px 50px -12px var(--shadow-pro-hover);
+      }
+      /* Custom Scrollbars */
+      .custom-scrollbar::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+      }
+      .custom-scrollbar::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      .custom-scrollbar::-webkit-scrollbar-thumb {
+        background: var(--scrollbar-thumb);
+        border-radius: 10px;
+      }
+      .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+        background: var(--scrollbar-thumb-hover);
+      }
+      .scrollbar-hide::-webkit-scrollbar {
+        display: none;
+      }
+      .scrollbar-hide {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+      }
+      .card-hover-lift:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 10px 25px -5px var(--card-hover-lift), 0 8px 10px -6px var(--card-hover-lift);
+      }
+    </style>
+  </head>
+  <body class="bg-background text-on-surface">
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>
