@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
+import { useFeedback } from '../components/FeedbackProvider';
 
 export default function Settings({ theme, onThemeChange, refreshDocuments }) {
+  const { showAlert, showConfirm, showToast } = useFeedback();
   const [config, setConfig] = useState({
     autoPurgeDays: 'Never',
     onDiskEncryption: true
@@ -36,32 +38,64 @@ export default function Settings({ theme, onThemeChange, refreshDocuments }) {
         body: JSON.stringify(config)
       });
       if (res.ok) {
-        alert('Configurations saved successfully!');
+        showToast({
+          title: 'Settings saved',
+          message: 'Configurations saved successfully!',
+          tone: 'success'
+        });
+      } else {
+        throw new Error('Failed to save settings.');
       }
     } catch (err) {
       console.error('Error saving settings:', err);
-      alert('Failed to save settings.');
+      void showAlert({
+        title: 'Save failed',
+        message: err.message || 'Failed to save settings.',
+        tone: 'danger',
+        confirmText: 'Close'
+      });
     } finally {
       setSaving(false);
     }
   };
 
   const handleWipeData = async () => {
-    if (confirm('CAUTION: This will irreversibly delete all PDF indexes, summaries, and chat history. Continue?')) {
+    const confirmed = await showConfirm({
+      title: 'Wipe all app data?',
+      message: 'CAUTION: This will irreversibly delete all PDF indexes, summaries, and chat history. Continue?',
+      tone: 'danger',
+      confirmText: 'Wipe Data',
+      cancelText: 'Cancel'
+    });
+
+    if (confirmed) {
       try {
         const docsRes = await fetch('/api/documents');
-        if (docsRes.ok) {
-          const docs = await docsRes.json();
-          const deletePromises = docs.map(d => 
-            fetch(`/api/documents/${d.id}`, { method: 'DELETE' })
-          );
-          await Promise.all(deletePromises);
-          refreshDocuments();
-          alert('All database files successfully wiped.');
+        if (!docsRes.ok) {
+          throw new Error('Unable to load documents for deletion.');
         }
+        const docs = await docsRes.json();
+        const deletePromises = docs.map((doc) =>
+          fetch(`/api/documents/${doc.id}`, { method: 'DELETE' })
+        );
+        const deleteResults = await Promise.all(deletePromises);
+        if (!deleteResults.every((result) => result.ok)) {
+          throw new Error('Some documents could not be deleted.');
+        }
+        refreshDocuments();
+        showToast({
+          title: 'Data wiped',
+          message: 'All database files successfully wiped.',
+          tone: 'success'
+        });
       } catch (err) {
         console.error('Wipe data error:', err);
-        alert('Failed to wipe data.');
+        void showAlert({
+          title: 'Wipe failed',
+          message: err.message || 'Failed to wipe data.',
+          tone: 'danger',
+          confirmText: 'Close'
+        });
       }
     }
   };

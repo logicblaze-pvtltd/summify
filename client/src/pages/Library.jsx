@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
+import { useFeedback } from '../components/FeedbackProvider';
 
 export default function Library({ documents, refreshDocuments, onSelectDocument }) {
+  const { showAlert, showConfirm, showToast } = useFeedback();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDocs, setSelectedDocs] = useState(new Set());
   const [viewType, setViewType] = useState('grid'); // 'grid' or 'list'
@@ -48,17 +50,49 @@ export default function Library({ documents, refreshDocuments, onSelectDocument 
   };
 
   const handleBatchDelete = async () => {
-    if (confirm(`Are you sure you want to permanently delete the ${selectedDocs.size} selected documents?`)) {
-      try {
-        const promises = Array.from(selectedDocs).map(id =>
-          fetch(`/api/documents/${id}`, { method: 'DELETE' })
-        );
-        await Promise.all(promises);
-        setSelectedDocs(new Set());
-        refreshDocuments();
-      } catch (err) {
-        console.error('Batch delete error:', err);
+    if (selectedDocs.size === 0) {
+      showToast({
+        title: 'Nothing selected',
+        message: 'Please select at least one document to delete.',
+        tone: 'info'
+      });
+      return;
+    }
+
+    const confirmed = await showConfirm({
+      title: 'Delete selected documents?',
+      message: `Are you sure you want to permanently delete the ${selectedDocs.size} selected documents? This cannot be undone.`,
+      tone: 'warning',
+      confirmText: 'Delete Permanently',
+      cancelText: 'Cancel'
+    });
+
+    if (!confirmed) return;
+
+    try {
+      const promises = Array.from(selectedDocs).map((id) =>
+        fetch(`/api/documents/${id}`, { method: 'DELETE' })
+      );
+      const responses = await Promise.all(promises);
+      if (!responses.every((response) => response.ok)) {
+        throw new Error('One or more documents could not be deleted.');
       }
+      const deletedCount = selectedDocs.size;
+      setSelectedDocs(new Set());
+      refreshDocuments();
+      showToast({
+        title: 'Documents deleted',
+        message: `${deletedCount} document${deletedCount !== 1 ? 's' : ''} were permanently deleted.`,
+        tone: 'success'
+      });
+    } catch (err) {
+      console.error('Batch delete error:', err);
+      void showAlert({
+        title: 'Delete failed',
+        message: err.message || 'Batch delete failed.',
+        tone: 'danger',
+        confirmText: 'Close'
+      });
     }
   };
 

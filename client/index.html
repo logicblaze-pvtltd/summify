@@ -4,6 +4,15 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>LocalAI PDF - Secure Summarization</title>
+    <script>
+      (function() {
+        const theme = localStorage.getItem('theme');
+        if (theme === 'dark') {
+          document.documentElement.classList.remove('light');
+          document.documentElement.classList.add('dark');
+        }
+      })();
+    </script>
     <!-- Tailwind CSS with Forms and Container Queries plugins -->
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
     
@@ -279,6 +288,27 @@
       .card-hover-lift:hover {
         transform: translateY(-4px);
         box-shadow: 0 10px 25px -5px var(--card-hover-lift), 0 8px 10px -6px var(--card-hover-lift);
+      }
+      /* Local Jameel Noori Nastaleeq Font for Urdu Text */
+      @font-face {
+        font-family: 'Jameel Noori Nastaleeq';
+        font-style: normal;
+        font-weight: 400;
+        src: local('Jameel Noori Nastaleeq'), url('/fonts/JameelNooriNastaleeqRegular.woff') format('woff');
+        font-display: swap;
+      }
+      .urdu-calligraphy {
+        font-family: 'Jameel Noori Nastaleeq', 'Noto Nastaliq Urdu', 'Urdu Typesetting', serif;
+        font-size: 1.35em;
+        line-height: 2.2;
+        direction: rtl;
+        text-align: right;
+      }
+      /* Glass gradient panel — works in both light & dark modes */
+      .glass-gradient-panel {
+        background: linear-gradient(180deg, var(--glass-bg) 0%, color-mix(in srgb, var(--surface-container) 60%, transparent) 100%) !important;
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
       }
     </style>
   </head>

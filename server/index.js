@@ -14,6 +14,46 @@ import sharp from "sharp";
 // Load environment variables
 dotenv.config();
 
+import jwt from "jsonwebtoken";
+import { initDatabase, getUserByEmail, getUserById, createUser, countDocumentsByUserId, deleteDocumentById, getDocumentById, getDocumentCount, getDocumentsByUserId, reassignDocumentsByUserId, saveDocument } from "./database.js";
+
+const JWT_SECRET = process.env.JWT_SECRET || "summify_secret_key_123456";
+
+function authenticateToken(req, res, next) {
+  const authHeader = req.headers["authorization"];
+  const token = authHeader && authHeader.split(" ")[1];
+  
+  if (!token) {
+    const guestId = req.headers["x-guest-id"] || "guest_default";
+    req.user = { id: guestId, isGuest: true };
+    return next();
+  }
+
+  jwt.verify(token, JWT_SECRET, (err, user) => {
+    if (err) {
+      const guestId = req.headers["x-guest-id"] || "guest_default";
+      req.user = { id: guestId, isGuest: true };
+      return next();
+    }
+    req.user = { ...user, isGuest: false };
+    next();
+  });
+}
+
+function hashPassword(password) {
+  const salt = crypto.randomBytes(16).toString("hex");
+  const hash = crypto.pbkdf2Sync(password, salt, 1000, 64, "sha512").toString("hex");
+  return `${salt}:${hash}`;
+}
+
+function verifyPassword(password, storedHash) {
+  if (!storedHash || !storedHash.includes(":")) return false;
+  const [salt, originalHash] = storedHash.split(":");
+  const hash = crypto.pbkdf2Sync(password, salt, 1000, 64, "sha512").toString("hex");
+  return hash === originalHash;
+}
+
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -23,14 +63,92 @@ const PORT = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json());
 
+// Auth: Register
+app.post("/api/auth/register", async (req, res) => {
+  try {
+    const { name, email, password } = req.body;
+    if (!name || !email || !password) {
+      return res.status(400).json({ error: "Name, email, and password are required" });
+    }
+
+    const existingUser = await getUserByEmail(email);
+    if (existingUser) {
+      return res.status(400).json({ error: "Email is already registered" });
+    }
+
+    const passwordHash = hashPassword(password);
+    const userId = await createUser(name, email, passwordHash);
+    const guestDocumentsMigrated = migrateGuestDocumentsToUser(req.headers["x-guest-id"], userId);
+
+    const token = jwt.sign({ id: userId, email, name }, JWT_SECRET, { expiresIn: "7d" });
+    res.status(201).json({
+      success: true,
+      token,
+      user: { id: userId, name, email },
+      guestDocumentsMigrated
+    });
+  } catch (error) {
+    console.error("Registration error:", error);
+    res.status(500).json({ error: "Internal server error during registration" });
+  }
+});
+
+// Auth: Login
+app.post("/api/auth/login", async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    if (!email || !password) {
+      return res.status(400).json({ error: "Email and password are required" });
+    }
+
+    const user = await getUserByEmail(email);
+    if (!user || !verifyPassword(password, user.password_hash)) {
+      return res.status(400).json({ error: "Invalid email or password" });
+    }
+
+    const guestDocumentsMigrated = migrateGuestDocumentsToUser(req.headers["x-guest-id"], user.id);
+    const token = jwt.sign({ id: user.id, email: user.email, name: user.name }, JWT_SECRET, { expiresIn: "7d" });
+    res.json({
+      success: true,
+      token,
+      user: { id: user.id, name: user.name, email: user.email },
+      guestDocumentsMigrated
+    });
+  } catch (error) {
+    console.error("Login error:", error);
+    res.status(500).json({ error: "Internal server error during login" });
+  }
+});
+
+// Auth: Get Profile
+app.get("/api/auth/profile", authenticateToken, async (req, res) => {
+  try {
+    const user = await getUserById(req.user.id);
+    if (!user) return res.status(404).json({ error: "User not found" });
+    res.json({ user });
+  } catch (error) {
+    console.error("Profile fetch error:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+
 // Ensure directories exist
 const UPLOADS_DIR = path.join(__dirname, "uploads");
 const DATA_DIR = path.join(__dirname, "data");
 if (!fs.existsSync(UPLOADS_DIR)) fs.mkdirSync(UPLOADS_DIR, { recursive: true });
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
 
-const DOCUMENTS_FILE = path.join(DATA_DIR, "documents.json");
+const LEGACY_DOCUMENTS_FILE = path.join(DATA_DIR, "documents.json");
 const SETTINGS_FILE = path.join(DATA_DIR, "settings.json");
+const GUEST_USAGE_FILE = path.join(DATA_DIR, "guest-usage.json");
+const GUEST_UPLOAD_LIMIT = 5;
+const DEFAULT_DOCUMENT_SUMMARIES = {
+  short: "",
+  detailed: "",
+  bullet: "",
+  executive: "",
+};
 
 // Helper to read/write persistent files
 const readJsonFile = (filePath, defaultData = []) => {
@@ -52,7 +170,143 @@ const writeJsonFile = (filePath, data) => {
   }
 };
 
-// Multer storage configuration for PDF uploads
+const addMonths = (date, months = 1) => {
+  const result = new Date(date);
+  const dayOfMonth = result.getDate();
+  result.setDate(1);
+  result.setMonth(result.getMonth() + months);
+  const lastDayOfMonth = new Date(result.getFullYear(), result.getMonth() + 1, 0).getDate();
+  result.setDate(Math.min(dayOfMonth, lastDayOfMonth));
+  return result;
+};
+
+const migrateGuestDocumentsToUser = async (guestId, userId) => {
+  if (!guestId || !userId || guestId === "guest_default" || guestId === userId) {
+    return 0;
+  }
+
+  try {
+    return await reassignDocumentsByUserId(guestId, userId);
+  } catch (error) {
+    console.error("Guest document migration failed:", error);
+    return 0;
+  }
+};
+
+const createGuestQuotaRecord = (used = 0, startDate = new Date()) => ({
+  used,
+  periodStart: startDate.toISOString(),
+  resetAt: addMonths(startDate, 1).toISOString(),
+});
+
+const getGuestQuotaRecord = async (guestId) => {
+  const now = new Date();
+  const guestUsage = readJsonFile(GUEST_USAGE_FILE, {});
+  let record = guestUsage[guestId];
+
+  if (!record) {
+    const existingDocuments = await countDocumentsByUserId(guestId);
+    record = createGuestQuotaRecord(existingDocuments, now);
+    guestUsage[guestId] = record;
+    writeJsonFile(GUEST_USAGE_FILE, guestUsage);
+    return record;
+  }
+
+  const resetAt = record.resetAt ? new Date(record.resetAt) : null;
+  if (resetAt && !Number.isNaN(resetAt.getTime()) && now >= resetAt) {
+    record = createGuestQuotaRecord(0, now);
+    guestUsage[guestId] = record;
+    writeJsonFile(GUEST_USAGE_FILE, guestUsage);
+    return record;
+  }
+
+  let needsSave = false;
+  if (typeof record.used !== "number" || Number.isNaN(record.used)) {
+    record.used = 0;
+    needsSave = true;
+  }
+  if (!record.periodStart) {
+    record.periodStart = now.toISOString();
+    needsSave = true;
+  }
+  if (!record.resetAt) {
+    record.resetAt = addMonths(new Date(record.periodStart), 1).toISOString();
+    needsSave = true;
+  }
+
+  if (needsSave) {
+    guestUsage[guestId] = record;
+    writeJsonFile(GUEST_USAGE_FILE, guestUsage);
+  }
+
+  return record;
+};
+
+const incrementGuestQuota = async (guestId, previousUsed = 0) => {
+  const now = new Date();
+  const guestUsage = readJsonFile(GUEST_USAGE_FILE, {});
+  let record = guestUsage[guestId];
+
+  if (!record) {
+    record = createGuestQuotaRecord(previousUsed, now);
+  } else {
+    const resetAt = record.resetAt ? new Date(record.resetAt) : null;
+    if (resetAt && !Number.isNaN(resetAt.getTime()) && now >= resetAt) {
+      record = createGuestQuotaRecord(0, now);
+    } else {
+      if (typeof record.used !== "number" || Number.isNaN(record.used)) {
+        record.used = 0;
+      }
+      if (!record.periodStart) {
+        record.periodStart = now.toISOString();
+      }
+      if (!record.resetAt) {
+        record.resetAt = addMonths(new Date(record.periodStart), 1).toISOString();
+      }
+    }
+  }
+
+  record.used += 1;
+  guestUsage[guestId] = record;
+  writeJsonFile(GUEST_USAGE_FILE, guestUsage);
+  return record;
+};
+
+const migrateLegacyDocumentsIfNeeded = async () => {
+  try {
+    const legacyDocuments = readJsonFile(LEGACY_DOCUMENTS_FILE, []);
+    if (!Array.isArray(legacyDocuments) || legacyDocuments.length === 0) {
+      return 0;
+    }
+
+    const existingCount = await getDocumentCount();
+    if (existingCount > 0) {
+      return 0;
+    }
+
+    let importedCount = 0;
+    for (const legacyDocument of legacyDocuments) {
+      await saveDocument({
+        ...legacyDocument,
+        tags: legacyDocument.tags || [],
+        chunks: legacyDocument.chunks || [],
+        summaries: legacyDocument.summaries || { ...DEFAULT_DOCUMENT_SUMMARIES },
+        chatHistory: legacyDocument.chatHistory || [],
+        recentOverview: legacyDocument.recentOverview || "",
+      });
+      importedCount += 1;
+    }
+
+    if (importedCount > 0) {
+      console.log(`Migrated ${importedCount} legacy document(s) into MySQL.`);
+    }
+
+    return importedCount;
+  } catch (error) {
+    console.error("Legacy document migration failed:", error);
+    return 0;
+  }
+};// Multer storage configuration for PDF uploads
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     cb(null, UPLOADS_DIR);
@@ -423,229 +677,292 @@ app.post("/api/settings", (req, res) => {
 });
 
 // List documents (Library)
-app.get("/api/documents", (req, res) => {
-  const documents = readJsonFile(DOCUMENTS_FILE);
-  // Return metadata only to keep response lightweight
-  const metadata = documents.map((doc) => ({
-    id: doc.id,
-    fileName: doc.fileName,
-    fileSize: doc.fileSize,
-    uploadDate: doc.uploadDate,
-    status: doc.status,
-    tags: doc.tags || [],
-    pageCount: doc.pageCount || 1,
-    recentOverview: doc.recentOverview || "",
-  }));
-  res.json(metadata);
+app.get("/api/documents", authenticateToken, async (req, res) => {
+  try {
+    const documents = await getDocumentsByUserId(req.user.id);
+    const metadata = documents.map((doc) => ({
+      id: doc.id,
+      fileName: doc.fileName,
+      fileSize: doc.fileSize,
+      uploadDate: doc.uploadDate,
+      status: doc.status,
+      tags: doc.tags || [],
+      pageCount: doc.pageCount || 1,
+      recentOverview: doc.recentOverview || "",
+    }));
+    res.json(metadata);
+  } catch (error) {
+    console.error("Error fetching documents:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
 });
 
 // Get single document detail (including summaries)
-app.get("/api/documents/:id", (req, res) => {
-  const documents = readJsonFile(DOCUMENTS_FILE);
-  const doc = documents.find((d) => d.id === req.params.id);
-  if (!doc) return res.status(404).json({ error: "Document not found" });
-  res.json(doc);
+app.get("/api/documents/:id", authenticateToken, async (req, res) => {
+  try {
+    const doc = await getDocumentById(req.params.id, req.user.id);
+    if (!doc) return res.status(404).json({ error: "Document not found" });
+    res.json(doc);
+  } catch (error) {
+    console.error("Error fetching document detail:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Guest quota status
+app.get("/api/guest/quota", authenticateToken, async (req, res) => {
+  try {
+    if (!req.user.isGuest) {
+      return res.json({
+        guest: false,
+        limit: null,
+        used: null,
+        remaining: null,
+        resetAt: null,
+      });
+    }
+
+    const quota = await getGuestQuotaRecord(req.user.id);
+    const remaining = Math.max(GUEST_UPLOAD_LIMIT - quota.used, 0);
+
+    res.json({
+      guest: true,
+      limit: GUEST_UPLOAD_LIMIT,
+      used: quota.used,
+      remaining,
+      resetAt: quota.resetAt,
+      periodStart: quota.periodStart,
+      limitReached: quota.used >= GUEST_UPLOAD_LIMIT,
+    });
+  } catch (error) {
+    console.error("Error fetching guest quota:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
 });
 
 // Delete document
-app.delete("/api/documents/:id", (req, res) => {
-  let documents = readJsonFile(DOCUMENTS_FILE);
-  const docIndex = documents.findIndex((d) => d.id === req.params.id);
-
-  if (docIndex === -1)
-    return res.status(404).json({ error: "Document not found" });
-
-  const doc = documents[docIndex];
-
-  // Remove file from disk
-  if (doc.filePath && fs.existsSync(doc.filePath)) {
-    try {
-      fs.unlinkSync(doc.filePath);
-    } catch (e) {
-      console.error("Failed to delete file from disk:", e.message);
+app.delete("/api/documents/:id", authenticateToken, async (req, res) => {
+  try {
+    const doc = await getDocumentById(req.params.id, req.user.id);
+    if (!doc) {
+      return res.status(404).json({ error: "Document not found" });
     }
-  }
 
-  documents.splice(docIndex, 1);
-  writeJsonFile(DOCUMENTS_FILE, documents);
-  res.json({ success: true });
+    if (doc.filePath && fs.existsSync(doc.filePath)) {
+      try {
+        fs.unlinkSync(doc.filePath);
+      } catch (error) {
+        console.error("Failed to delete file from disk:", error.message);
+      }
+    }
+
+    await deleteDocumentById(req.params.id, req.user.id);
+    res.json({ success: true });
+  } catch (error) {
+    console.error("Error deleting document:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
 });
 
 // Upload and Process PDF (Optimized for Scanned Urdu and Rate-Limits)
-app.post("/api/upload", upload.single("pdf"), async (req, res) => {
-  if (!req.file) {
-    return res.status(400).json({ error: "No file uploaded" });
-  }
+app.post("/api/upload", authenticateToken, upload.single("pdf"), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: "No file uploaded" });
+    }
 
-  const docId = crypto.randomUUID();
-  const filePath = req.file.path;
-
-  // Encoding fix for Urdu/Arabic filenames (Prevents corruption like ØºØ²Ù...)
-  const fileName = Buffer.from(req.file.originalname, "latin1").toString(
-    "utf8",
-  );
-
-  const fileSize = (req.file.size / (1024 * 1024)).toFixed(1) + " MB";
-  const uploadDate = new Date().toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
-
-  let documents = readJsonFile(DOCUMENTS_FILE);
-  const newDoc = {
-    id: docId,
-    fileName,
-    fileSize,
-    filePath,
-    uploadDate,
-    status: "Uploading",
-    tags: ["#New"],
-    pageCount: 1,
-    text: "",
-    chunks: [],
-    summaries: { short: "", detailed: "", bullet: "", executive: "" },
-    chatHistory: [],
-    recentOverview: "",
-  };
-  documents.push(newDoc);
-  writeJsonFile(DOCUMENTS_FILE, documents);
-
-  res.json({ id: docId, status: "Processing" });
-
-  // Asynchronous processing (Hybrid Pipeline optimized for Urdu Scanned Documents)
-  (async () => {
-    try {
-      const db = readJsonFile(DOCUMENTS_FILE);
-      const activeDoc = db.find((d) => d.id === docId);
-      if (!activeDoc) return;
-
-      activeDoc.status = "Processing";
-      writeJsonFile(DOCUMENTS_FILE, db);
-
-      const fileBuffer = fs.readFileSync(filePath);
-      let extractedText = "";
-      let numPages = 1;
-
-      // 1. Try standard text extraction
-      try {
-        const pdfData = await pdf(fileBuffer, { pagerender: renderPageRTL });
-        extractedText = pdfData.text ? pdfData.text.trim() : "";
-        numPages = pdfData.numpages || 1;
-      } catch (pdfErr) {
-        console.error("Standard parse failed:", pdfErr.message);
-      }
-
-      // 2. CRITICAL CLEANUP: Check if extracted text is just CamScanner noise
-      const cleanCheck = extractedText
-        .replace(/CamScanner/gi, "")
-        .replace(/[\s\n\t]/g, "");
-
-      // NOTE: We tried unconditionally routing Arabic-script text through
-      // Tesseract OCR here (to sidestep Nastaliq's diagonal glyph stacking),
-      // but in practice Tesseract's Urdu recognition on this document was
-      // WORSE than the geometry-based renderPageRTL extraction above — it
-      // produced English-letter gibberish instead of readable Urdu. Since
-      // renderPageRTL already reconstructs the text-layer at high accuracy,
-      // only fall back to OCR when there's genuinely no usable text layer
-      // (scanned/CamScanner PDFs), not just because the text is Arabic.
-      const needsOcr = !extractedText || cleanCheck.length < 30;
-
-      if (needsOcr) {
-        console.log(
-          `Scanned/CamScanner PDF detected for ${fileName}. Triggering OCR...`,
-        );
-
-        activeDoc.status = "Performing Urdu OCR";
-        writeJsonFile(DOCUMENTS_FILE, db);
-
-        let ocrTextArray = [];
-        let pageCounter = 0;
-
-        try {
-          const documentPages = await pdfToImg.pdf(filePath, { scale: 2.5 }); // High scale for crisp Urdu text
-
-          for await (const pageBuffer of documentPages) {
-            pageCounter++;
-            console.log(`Processing page ${pageCounter} with Urdu OCR...`);
-
-            // Sharp Image Optimization for Urdu Nastaliq script (grayscale & normalize to preserve thin cursive connections)
-            const optimizedImageBuffer = await sharp(pageBuffer)
-              .resize({ width: 2500 }) // Upscale
-              .grayscale()
-              .normalize()
-              .toBuffer();
-            // Tesseract Engine with English + Urdu models combined
-            const {
-              data: { text },
-            } = await Tesseract.recognize(optimizedImageBuffer, "eng+urd", {
-              logger: (m) =>
-                console.log(
-                  `[Page ${pageCounter}] OCR Progress: ${Math.round(m.progress * 100)}%`,
-                ),
-              // Use default automatic page segmentation (PSM 3) to support multi-column layouts like Ghazals/poems
-              tessedit_pageseg_mode: "3", 
-            });
-
-            if (text) {
-              const cleanedPageText = text.replace(/CamScanner/gi, "").trim();
-              ocrTextArray.push(
-                `--- PAGE ${pageCounter} ---\n${cleanedPageText}`,
-              );
-            }
-          }
-
-          extractedText = ocrTextArray.join("\n\n");
-          numPages = pageCounter || 1;
-        } catch (ocrError) {
-          console.error("OCR Pipeline failed:", ocrError);
-          throw new Error(
-            `Failed during Urdu OCR processing: ${ocrError.message}`,
-          );
+    // Check guest upload limit
+    let quota = null;
+    if (req.user.isGuest) {
+      quota = await getGuestQuotaRecord(req.user.id);
+      if (quota.used >= GUEST_UPLOAD_LIMIT) {
+        if (req.file.path && fs.existsSync(req.file.path)) {
+          try {
+            fs.unlinkSync(req.file.path);
+          } catch (error) {}
         }
+        return res.status(403).json({
+          error: "Upload limit reached",
+          message: `Guest users can only upload up to ${GUEST_UPLOAD_LIMIT} PDFs per month. Please sign in to upload more!`,
+        });
       }
+    }
 
-      if (!extractedText || extractedText.trim().length === 0) {
-        throw new Error("Could not extract any content from the document.");
+    const docId = crypto.randomUUID();
+    const filePath = req.file.path;
+
+    // Encoding fix for Urdu/Arabic filenames (Prevents corruption like Ã˜ÂºÃ˜Â²Ã™...)
+    const fileName = Buffer.from(req.file.originalname, "latin1").toString(
+      "utf8",
+    );
+
+    const fileSize = (req.file.size / (1024 * 1024)).toFixed(1) + " MB";
+    const uploadDate = new Date().toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+    const newDoc = {
+      id: docId,
+      userId: req.user.id,
+      fileName,
+      fileSize,
+      filePath,
+      uploadDate,
+      status: "Uploading",
+      tags: ["#New"],
+      pageCount: 1,
+      text: "",
+      chunks: [],
+      summaries: { ...DEFAULT_DOCUMENT_SUMMARIES },
+      chatHistory: [],
+      recentOverview: "",
+    };
+
+    await saveDocument(newDoc);
+
+    if (req.user.isGuest) {
+      try {
+        await incrementGuestQuota(req.user.id, quota ? quota.used : 0);
+      } catch (error) {
+        console.error("Failed to update guest quota:", error);
       }
+    }
 
-      // 3. Update Text Metadata
-      activeDoc.text = extractedText;
-      activeDoc.pageCount = numPages;
-      activeDoc.status = "Creating embeddings";
-      writeJsonFile(DOCUMENTS_FILE, db);
+    res.json({ id: docId, status: "Processing" });
 
-      // 4. Chunking & Local Vocabulary
-      const textChunks = chunkText(extractedText, 1000, 200);
-      activeDoc.chunks = textChunks.map((chunkText, index) => ({
-        id: index,
-        text: chunkText,
-        embedding: [],
-      }));
+    // Asynchronous processing (Hybrid Pipeline optimized for Urdu Scanned Documents)
+    (async () => {
+      try {
+        const activeDoc = await getDocumentById(docId);
+        if (!activeDoc) return;
 
-      const vocab = buildVocabulary(textChunks);
-      const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-      
-      for (let i = 0; i < activeDoc.chunks.length; i++) {
-        activeDoc.chunks[i].embedding = await generateEmbedding(
-          activeDoc.chunks[i].text,
-          vocab,
-        );
-        await sleep(2500);
-      }
+        activeDoc.status = "Processing";
+        await saveDocument(activeDoc);
 
-      activeDoc.status = "Generating summary";
-      writeJsonFile(DOCUMENTS_FILE, db);
+        const fileBuffer = fs.readFileSync(filePath);
+        let extractedText = "";
+        let numPages = 1;
 
-      // 5. SINGLE-CALL SUMMARIZATION (Fixed 429 Rate Limit Issue)
-      const summaries = { short: "", detailed: "", bullet: "", executive: "" };
-      const apiReady = !!GEMINI_API_KEY;
-      const summaryInput = extractedText.substring(0, 12000);
-
-      if (apiReady) {
+        // 1. Try standard text extraction
         try {
-          // Combined master prompt to get all summaries in 1 single API call
-          const masterPrompt = `Analyze the following document and provide four distinct types of summaries. 
+          const pdfData = await pdf(fileBuffer, { pagerender: renderPageRTL });
+          extractedText = pdfData.text ? pdfData.text.trim() : "";
+          numPages = pdfData.numpages || 1;
+        } catch (pdfErr) {
+          console.error("Standard parse failed:", pdfErr.message);
+        }
+
+        // 2. CRITICAL CLEANUP: Check if extracted text is just CamScanner noise
+        const cleanCheck = extractedText
+          .replace(/CamScanner/gi, "")
+          .replace(/[\s\n\t]/g, "");
+
+        // NOTE: We tried unconditionally routing Arabic-script text through
+        // Tesseract OCR here (to sidestep Nastaliq's diagonal glyph stacking),
+        // but in practice Tesseract's Urdu recognition on this document was
+        // WORSE than the geometry-based renderPageRTL extraction above â€” it
+        // produced English-letter gibberish instead of readable Urdu. Since
+        // renderPageRTL already reconstructs the text-layer at high accuracy,
+        // only fall back to OCR when there's genuinely no usable text layer
+        // (scanned/CamScanner PDFs), not just because the text is Arabic.
+        const needsOcr = !extractedText || cleanCheck.length < 30;
+
+        if (needsOcr) {
+          console.log(
+            `Scanned/CamScanner PDF detected for ${fileName}. Triggering OCR...`,
+          );
+
+          activeDoc.status = "Performing Urdu OCR";
+          await saveDocument(activeDoc);
+
+          let ocrTextArray = [];
+          let pageCounter = 0;
+
+          try {
+            const documentPages = await pdfToImg.pdf(filePath, { scale: 2.5 }); // High scale for crisp Urdu text
+
+            for await (const pageBuffer of documentPages) {
+              pageCounter++;
+              console.log(`Processing page ${pageCounter} with Urdu OCR...`);
+
+              // Sharp Image Optimization for Urdu Nastaliq script (grayscale & normalize to preserve thin cursive connections)
+              const optimizedImageBuffer = await sharp(pageBuffer)
+                .resize({ width: 2500 }) // Upscale
+                .grayscale()
+                .normalize()
+                .toBuffer();
+              // Tesseract Engine with English + Urdu models combined
+              const {
+                data: { text },
+              } = await Tesseract.recognize(optimizedImageBuffer, "eng+urd", {
+                logger: (m) =>
+                  console.log(
+                    `[Page ${pageCounter}] OCR Progress: ${Math.round(m.progress * 100)}%`,
+                  ),
+                // Use default automatic page segmentation (PSM 3) to support multi-column layouts like Ghazals/poems
+                tessedit_pageseg_mode: "3",
+              });
+
+              if (text) {
+                const cleanedPageText = text.replace(/CamScanner/gi, "").trim();
+                ocrTextArray.push(
+                  `--- PAGE ${pageCounter} ---\n${cleanedPageText}`,
+                );
+              }
+            }
+
+            extractedText = ocrTextArray.join("\n\n");
+            numPages = pageCounter || 1;
+          } catch (ocrError) {
+            console.error("OCR Pipeline failed:", ocrError);
+            throw new Error(
+              `Failed during Urdu OCR processing: ${ocrError.message}`,
+            );
+          }
+        }
+
+        if (!extractedText || extractedText.trim().length === 0) {
+          throw new Error("Could not extract any content from the document.");
+        }
+
+        // 3. Update Text Metadata
+        activeDoc.text = extractedText;
+        activeDoc.pageCount = numPages;
+        activeDoc.status = "Creating embeddings";
+        await saveDocument(activeDoc);
+
+        // 4. Chunking & Local Vocabulary
+        const textChunks = chunkText(extractedText, 1000, 200);
+        activeDoc.chunks = textChunks.map((chunkText, index) => ({
+          id: index,
+          text: chunkText,
+          embedding: [],
+        }));
+
+        const vocab = buildVocabulary(textChunks);
+        const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+        for (let i = 0; i < activeDoc.chunks.length; i++) {
+          activeDoc.chunks[i].embedding = await generateEmbedding(
+            activeDoc.chunks[i].text,
+            vocab,
+          );
+          await sleep(2500);
+        }
+
+        activeDoc.status = "Generating summary";
+        await saveDocument(activeDoc);
+
+        // 5. SINGLE-CALL SUMMARIZATION (Fixed 429 Rate Limit Issue)
+        const summaries = { short: "", detailed: "", bullet: "", executive: "" };
+        const apiReady = !!GEMINI_API_KEY;
+        const summaryInput = extractedText.substring(0, 12000);
+
+        if (apiReady) {
+          try {
+            // Combined master prompt to get all summaries in 1 single API call
+            const masterPrompt = `Analyze the following document and provide four distinct types of summaries. 
 Your response must contain all four sections clearly separated by these exact tags: 
 [SHORT_SUMMARY], [DETAILED_SUMMARY], [BULLET_SUMMARY], and [EXECUTIVE_SUMMARY].
 Match the dominant language of the document (if the text is in Urdu, write all summaries in Urdu).
@@ -653,102 +970,119 @@ Match the dominant language of the document (if the text is in Urdu, write all s
 Document text:
 ${summaryInput}`;
 
-          const combinedResponse = await queryLLM(
-            "You are an expert document summarization assistant. Respond professionally using the dominant language of the document context.",
-            masterPrompt,
-          );
+            const combinedResponse = await queryLLM(
+              "You are an expert document summarization assistant. Respond professionally using the dominant language of the document context.",
+              masterPrompt,
+            );
 
-          // Regex matching to parse sections safely
-          const shortMatch = combinedResponse.match(
-            /\[SHORT_SUMMARY\]([\s\S]*?)(?=\[DETAILED_SUMMARY\]|$)/i,
-          );
-          const detailedMatch = combinedResponse.match(
-            /\[DETAILED_SUMMARY\]([\s\S]*?)(?=\[BULLET_SUMMARY\]|$)/i,
-          );
-          const bulletMatch = combinedResponse.match(
-            /\[BULLET_SUMMARY\]([\s\S]*?)(?=\[EXECUTIVE_SUMMARY\]|$)/i,
-          );
-          const execMatch = combinedResponse.match(
-            /\[EXECUTIVE_SUMMARY\]([\s\S]*?)$/i,
-          );
+            // Regex matching to parse sections safely
+            const shortMatch = combinedResponse.match(
+              /\[SHORT_SUMMARY\]([\s\S]*?)(?=\[DETAILED_SUMMARY\]|$)/i,
+            );
+            const detailedMatch = combinedResponse.match(
+              /\[DETAILED_SUMMARY\]([\s\S]*?)(?=\[BULLET_SUMMARY\]|$)/i,
+            );
+            const bulletMatch = combinedResponse.match(
+              /\[BULLET_SUMMARY\]([\s\S]*?)(?=\[EXECUTIVE_SUMMARY\]|$)/i,
+            );
+            const execMatch = combinedResponse.match(
+              /\[EXECUTIVE_SUMMARY\]([\s\S]*?)$/i,
+            );
 
-          summaries.short = shortMatch
-            ? shortMatch[1].trim()
-            : combinedResponse.substring(0, 400);
-          summaries.detailed = detailedMatch
-            ? detailedMatch[1].trim()
-            : combinedResponse;
-          summaries.bullet = bulletMatch
-            ? bulletMatch[1].trim()
-            : "Review detailed section for main highlights.";
-          summaries.executive = execMatch
-            ? execMatch[1].trim()
-            : "Review detailed section for executive summary.";
-        } catch (e) {
-          console.error(
-            `AI Batch summary failed: ${e.message}. Falling back to local extractor.`,
-          );
+            summaries.short = shortMatch
+              ? shortMatch[1].trim()
+              : combinedResponse.substring(0, 400);
+            summaries.detailed = detailedMatch
+              ? detailedMatch[1].trim()
+              : combinedResponse;
+            summaries.bullet = bulletMatch
+              ? bulletMatch[1].trim()
+              : "Review detailed section for main highlights.";
+            summaries.executive = execMatch
+              ? execMatch[1].trim()
+              : "Review detailed section for executive summary.";
+          } catch (e) {
+            console.error(
+              `AI Batch summary failed: ${e.message}. Falling back to local extractor.`,
+            );
+            for (const key of Object.keys(summaries)) {
+              summaries[key] = generateLocalMockSummary(extractedText, key);
+            }
+          }
+        } else {
           for (const key of Object.keys(summaries)) {
             summaries[key] = generateLocalMockSummary(extractedText, key);
           }
         }
-      } else {
-        for (const key of Object.keys(summaries)) {
-          summaries[key] = generateLocalMockSummary(extractedText, key);
+
+        activeDoc.summaries = summaries;
+        activeDoc.status = "Ready for Chat";
+        activeDoc.recentOverview =
+          summaries.short
+            .replace(/[#*`\n]/g, " ")
+            .substring(0, 150)
+            .trim() + "...";
+
+        // 6. Dynamic Tag Management
+        const tags = [];
+        const lowerText = extractedText.toLowerCase();
+        if (lowerText.includes("financial") || lowerText.includes("revenue"))
+          tags.push("#Finance");
+        if (
+          lowerText.includes("poetry") ||
+          lowerText.includes("Ø´Ø§Ø¹Ø±ÛŒ") ||
+          lowerText.includes("Ù…Ø±Ø«ÛŒÛ") ||
+          lowerText.includes("Ø§Ù†ÛŒØ³")
+        )
+          tags.push("#Literature");
+        if (lowerText.includes("legal") || lowerText.includes("agreement"))
+          tags.push("#Legal");
+        if (tags.length === 0) tags.push("#ScannedDoc");
+        activeDoc.tags = tags;
+
+        await saveDocument(activeDoc);
+        console.log(
+          `Document [${fileName}] fully processed via Urdu-OCR pipeline!`,
+        );
+      } catch (err) {
+        console.error(`Error processing document ${docId}:`, err);
+        const failedDoc = await getDocumentById(docId);
+        if (failedDoc) {
+          failedDoc.status = "Error";
+          failedDoc.text = `An error occurred during extraction/OCR: ${err.message}`;
+          await saveDocument(failedDoc);
         }
       }
-
-      activeDoc.summaries = summaries;
-      activeDoc.status = "Ready for Chat";
-      activeDoc.recentOverview =
-        summaries.short
-          .replace(/[#*`\n]/g, " ")
-          .substring(0, 150)
-          .trim() + "...";
-
-      // 6. Dynamic Tag Management
-      const tags = [];
-      const lowerText = extractedText.toLowerCase();
-      if (lowerText.includes("financial") || lowerText.includes("revenue"))
-        tags.push("#Finance");
-      if (
-        lowerText.includes("poetry") ||
-        lowerText.includes("شاعری") ||
-        lowerText.includes("مرثیہ") ||
-        lowerText.includes("انیس")
-      )
-        tags.push("#Literature");
-      if (lowerText.includes("legal") || lowerText.includes("agreement"))
-        tags.push("#Legal");
-      if (tags.length === 0) tags.push("#ScannedDoc");
-      activeDoc.tags = tags;
-
-      writeJsonFile(DOCUMENTS_FILE, db);
-      console.log(
-        `Document [${fileName}] fully processed via Urdu-OCR pipeline!`,
-      );
-    } catch (err) {
-      console.error(`Error processing document ${docId}:`, err);
-      const db = readJsonFile(DOCUMENTS_FILE);
-      const activeDoc = db.find((d) => d.id === docId);
-      if (activeDoc) {
-        activeDoc.status = "Error";
-        activeDoc.text = `An error occurred during extraction/OCR: ${err.message}`;
-        writeJsonFile(DOCUMENTS_FILE, db);
+    })();
+  } catch (error) {
+    console.error("Upload error:", error);
+    if (req.file?.path && fs.existsSync(req.file.path)) {
+      try {
+        fs.unlinkSync(req.file.path);
+      } catch (cleanupError) {
+        console.error("Failed to clean up uploaded file:", cleanupError.message);
       }
     }
-  })();
+    res.status(500).json({ error: "Internal server error during upload" });
+  }
 });
+
 // Chat Endpoint
-app.post("/api/chat/:id", async (req, res) => {
+app.post("/api/chat/:id", authenticateToken, async (req, res) => {
+  if (req.user.isGuest) {
+    return res.status(403).json({
+      error: "Authentication required",
+      message: "AI Chat is only available for registered users. Please sign in to chat with your PDFs."
+    });
+  }
+
   const { question } = req.body;
   if (!question) return res.status(400).json({ error: "Question is required" });
 
-  const documents = readJsonFile(DOCUMENTS_FILE);
-  const doc = documents.find((d) => d.id === req.params.id);
-  if (!doc) return res.status(404).json({ error: "Document not found" });
-
   try {
+    const doc = await getDocumentById(req.params.id, req.user.id);
+    if (!doc) return res.status(404).json({ error: "Document not found" });
+
     // 1. Build vocab from stored chunk texts and embed user query in same space
     const chunkTexts = doc.chunks.map((c) => c.text);
     const vocab = buildVocabulary(chunkTexts);
@@ -819,7 +1153,7 @@ Provide a clear, helpful answer based on the document context above.`;
 
     // Append to chat history
     doc.chatHistory.push({ question, answer });
-    writeJsonFile(DOCUMENTS_FILE, documents);
+    await saveDocument(doc);
 
     res.json({ answer });
   } catch (err) {
@@ -829,17 +1163,19 @@ Provide a clear, helpful answer based on the document context above.`;
 });
 
 // Reset Chat Endpoint
-app.post("/api/chat/:id/clear", (req, res) => {
-  const documents = readJsonFile(DOCUMENTS_FILE);
-  const doc = documents.find((d) => d.id === req.params.id);
-  if (!doc) return res.status(404).json({ error: "Document not found" });
+app.post("/api/chat/:id/clear", authenticateToken, async (req, res) => {
+  try {
+    const doc = await getDocumentById(req.params.id, req.user.id);
+    if (!doc) return res.status(404).json({ error: "Document not found" });
 
-  doc.chatHistory = [];
-  writeJsonFile(DOCUMENTS_FILE, documents);
-  res.json({ success: true });
-});
-
-// Common question-type patterns for intent detection
+    doc.chatHistory = [];
+    await saveDocument(doc);
+    res.json({ success: true });
+  } catch (error) {
+    console.error("Error clearing chat:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});// Common question-type patterns for intent detection
 const QUESTION_INTENTS = {
   purpose: [
     "purpose",
@@ -979,13 +1315,13 @@ function getLocalRuleBasedAnswer(question, text) {
 }
 
 // Export Summary as Text/HTML file
-app.get("/api/export/:id/:format", (req, res) => {
-  const { id, format } = req.params;
-  const documents = readJsonFile(DOCUMENTS_FILE);
-  const doc = documents.find((d) => d.id === id);
-  if (!doc) return res.status(404).send("Document not found");
+app.get("/api/export/:id/:format", authenticateToken, async (req, res) => {
+  try {
+    const { id, format } = req.params;
+    const doc = await getDocumentById(id, req.user.id);
+    if (!doc) return res.status(404).send("Document not found");
 
-  const content = `AI DOCUMENT SUMMARY REPORT
+    const content = `AI DOCUMENT SUMMARY REPORT
 File Name: ${doc.fileName}
 Date Processed: ${doc.uploadDate}
 
@@ -1010,41 +1346,62 @@ ${doc.summaries.bullet}
 ${doc.summaries.executive}
 `;
 
-  if (format === "txt") {
-    res.setHeader("Content-Type", "text/plain");
-    res.setHeader(
-      "Content-Disposition",
-      `attachment; filename="${doc.fileName.replace(".pdf", "")}_summary.txt"`,
-    );
-    return res.send(content);
-  } else if (format === "pdf") {
-    // Return HTML styled representation which can be printed as PDF by the browser
-    res.setHeader("Content-Type", "text/html");
-    res.setHeader(
-      "Content-Disposition",
-      `attachment; filename="${doc.fileName.replace(".pdf", "")}_summary.html"`,
-    );
-    return res.send(
-      `<html><head><title>Summary: ${doc.fileName}</title><style>body { font-family: sans-serif; padding: 40px; line-height: 1.6; color: #121929; } pre { background: #f5f6fb; padding: 20px; border-radius: 8px; white-space: pre-wrap; }</style></head><body><pre>${content}</pre></body></html>`,
-    );
-  } else if (format === "docx") {
-    // Lightweight docx download representation
-    res.setHeader(
-      "Content-Type",
-      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-    );
-    res.setHeader(
-      "Content-Disposition",
-      `attachment; filename="${doc.fileName.replace(".pdf", "")}_summary.docx"`,
-    );
-    // Sending text content as fallback document payload
-    return res.send(Buffer.from(content, "utf-8"));
-  }
+    if (format === "txt") {
+      res.setHeader("Content-Type", "text/plain");
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="${doc.fileName.replace(".pdf", "")}_summary.txt"`,
+      );
+      return res.send(content);
+    } else if (format === "pdf") {
+      // Return HTML styled representation which can be printed as PDF by the browser
+      res.setHeader("Content-Type", "text/html");
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="${doc.fileName.replace(".pdf", "")}_summary.html"`,
+      );
+      return res.send(
+        `<html><head><title>Summary: ${doc.fileName}</title><style>body { font-family: sans-serif; padding: 40px; line-height: 1.6; color: #121929; } pre { background: #f5f6fb; padding: 20px; border-radius: 8px; white-space: pre-wrap; }</style></head><body><pre>${content}</pre></body></html>`,
+      );
+    } else if (format === "docx") {
+      // Lightweight docx download representation
+      res.setHeader(
+        "Content-Type",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      );
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="${doc.fileName.replace(".pdf", "")}_summary.docx"`,
+      );
+      // Sending text content as fallback document payload
+      return res.send(Buffer.from(content, "utf-8"));
+    }
 
-  res.status(400).send("Invalid export format");
+    res.status(400).send("Invalid export format");
+  } catch (error) {
+    console.error("Export error:", error);
+    res.status(500).send("Internal server error");
+  }
 });
+// Serve static client build files
+const CLIENT_DIST = path.join(__dirname, "..", "client", "dist");
+if (fs.existsSync(CLIENT_DIST)) {
+  app.use(express.static(CLIENT_DIST));
+  // SPA fallback: serve index.html for any non-API route
+  app.get("*", (req, res) => {
+    res.sendFile(path.join(CLIENT_DIST, "index.html"));
+  });
+}
 
 // Start Server
-app.listen(PORT, () => {
-  console.log(`Server is running securely on http://localhost:${PORT}`);
-});
+initDatabase()
+  .then(async () => {
+    await migrateLegacyDocumentsIfNeeded();
+    app.listen(PORT, () => {
+      console.log(`Server is running securely on http://localhost:${PORT}`);
+    });
+  })
+  .catch((err) => {
+    console.error("Database initialization failed. Exiting...", err);
+    process.exit(1);
+  });

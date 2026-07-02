@@ -1,16 +1,29 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useFeedback } from '../components/FeedbackProvider';
 
-export default function Dashboard({ onSelectDocument, onViewChange, documents, refreshDocuments }) {
+export default function Dashboard({ onSelectDocument, documents, refreshDocuments, user, guestQuota }) {
+  const navigate = useNavigate();
+  const { showAlert, showConfirm, showToast } = useFeedback();
   const [dragActive, setDragActive] = useState(false);
   const [processingFile, setProcessingFile] = useState(null);
   const [processingStatus, setProcessingStatus] = useState('');
-
+  const [uploadedCount, setUploadedCount] = useState(0);
   // Stats calculations based on actual documents
   const totalAnalyzed = documents.length;
-  
-  // Dynamic metrics tailored for a cloud/web service workflow
-  const estimatedPages = Math.round(totalAnalyzed * 12); 
-  const hoursSaved = (totalAnalyzed * 0.8).toFixed(1);
+  const guestLimit = guestQuota?.limit ?? 5;
+  const guestUsed = guestQuota?.used ?? totalAnalyzed;
+  const guestRemaining = guestQuota?.remaining ?? Math.max(guestLimit - guestUsed, 0);
+  const guestResetLabel = guestQuota?.resetAt
+    ? new Date(guestQuota.resetAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+    : 'one month';
+
+  // Dynamic metrics based on actual processed pages
+  const totalPagesProcessed = documents.reduce((sum, doc) => sum + (doc.pageCount || 1), 0);
+  const estimatedPages = totalPagesProcessed;
+  const hoursSaved = totalPagesProcessed > 0
+    ? Math.max(totalPagesProcessed * 0.12, 0.1).toFixed(1)
+    : '0.0';
 
   // Poll for document processing status
   useEffect(() => {
@@ -28,7 +41,12 @@ export default function Dashboard({ onSelectDocument, onViewChange, documents, r
               refreshDocuments();
               onSelectDocument(doc.id);
             } else if (doc.status === 'Error') {
-              alert('Error processing PDF: ' + (doc.text || 'Unknown error'));
+              void showAlert({
+                title: 'Processing error',
+                message: 'Error processing PDF: ' + (doc.text || 'Unknown error'),
+                tone: 'danger',
+                confirmText: 'Close'
+              });
               setProcessingFile(null);
               setProcessingStatus('');
               refreshDocuments();
@@ -70,11 +88,19 @@ export default function Dashboard({ onSelectDocument, onViewChange, documents, r
   const validateAndUpload = (file) => {
     if (processingFile) return;
     if (file.type !== 'application/pdf') {
-      alert('Only PDF files are allowed.');
+      showToast({
+        title: 'Invalid file',
+        message: 'Only PDF files are allowed.',
+        tone: 'warning'
+      });
       return;
     }
     if (file.size > 50 * 1024 * 1024) {
-      alert('File size exceeds the 50 MB limit.');
+      showToast({
+        title: 'File too large',
+        message: 'File size exceeds the 50 MB limit.',
+        tone: 'warning'
+      });
       return;
     }
     uploadFile(file);
@@ -83,7 +109,7 @@ export default function Dashboard({ onSelectDocument, onViewChange, documents, r
   const uploadFile = async (file) => {
     setProcessingFile({ name: file.name, id: null });
     setProcessingStatus('Uploading');
-    
+
     const formData = new FormData();
     formData.append('pdf', file);
 
@@ -94,7 +120,23 @@ export default function Dashboard({ onSelectDocument, onViewChange, documents, r
       });
 
       if (!response.ok) {
-        throw new Error('Upload failed');
+        const errorData = await response.json().catch(() => ({}));
+        if (response.status === 403) {
+          const wantsToSignUp = await showConfirm({
+            title: 'Upload limit reached',
+            message: (errorData.message || 'Upload limit reached.') + '\n\nWould you like to create a free account?',
+            tone: 'warning',
+            confirmText: 'Create Free Account',
+            cancelText: 'Stay Here'
+          });
+          if (wantsToSignUp) {
+            navigate('/register');
+          }
+          setProcessingFile(null);
+          setProcessingStatus('');
+          return;
+        }
+        throw new Error(errorData.message || 'Upload failed');
       }
 
       const data = await response.json();
@@ -102,22 +144,65 @@ export default function Dashboard({ onSelectDocument, onViewChange, documents, r
       setProcessingStatus(data.status);
     } catch (err) {
       console.error('Upload error:', err);
-      alert('Failed to upload file. Make sure the backend server is running.');
+      void showAlert({
+        title: 'Upload failed',
+        message: err.message || 'Failed to upload file. Make sure the backend server is running.',
+        tone: 'danger',
+        confirmText: 'Close'
+      });
       setProcessingFile(null);
       setProcessingStatus('');
     }
   };
+  const handleUploadClick = (e) => {
+    // Agar limit reach ho chuki hai to file dialog ko open mat hone do
+    if (uploadedCount >= 5) {
+      e.preventDefault(); // Default file input trigger ko rokta hai
+      e.stopPropagation(); // Event bubbling stop karta hai
 
+      setModalOpen(true); // Sirf aapka modal open hoga
+      return;
+    }
+
+    // Agar limit clear hai to file input click trigger ho
+    fileInputRef.current.click();
+  };
   const handleDeleteDoc = async (e, id) => {
     e.stopPropagation();
-    if (confirm('Are you sure you want to delete this document?')) {
+    const confirmed = await showConfirm({
+      title: 'Delete document?',
+      message: 'Are you sure you want to delete this document? This cannot be undone.',
+      tone: 'warning',
+      confirmText: 'Delete',
+      cancelText: 'Cancel'
+    });
+
+    if (confirmed) {
       try {
         const res = await fetch(`/api/documents/${id}`, { method: 'DELETE' });
         if (res.ok) {
           refreshDocuments();
+          showToast({
+            title: 'Document deleted',
+            message: 'The PDF was removed from your library.',
+            tone: 'success'
+          });
+        } else {
+          void showAlert({
+            title: 'Delete failed',
+            message: 'The document could not be deleted right now.',
+            tone: 'danger',
+            confirmText: 'Close'
+          });
         }
       } catch (err) {
         console.error('Delete error:', err);
+        void showAlert({
+          title: 'Delete failed',
+          message: err.message || 'Something went wrong while deleting the document.',
+          tone: 'danger',
+          confirmText: 'Close'
+        });
       }
     }
   };
@@ -135,9 +220,35 @@ export default function Dashboard({ onSelectDocument, onViewChange, documents, r
 
   return (
     <div className="p-margin-desktop space-y-12 max-w-7xl mx-auto w-full">
+
+      {/* Guest Mode Top Banner */}
+      {!user && (
+        <div className="flex items-center justify-between gap-4 px-5 py-3.5 rounded-2xl bg-primary/8 border border-primary/20" style={{ background: 'linear-gradient(135deg, rgba(0,108,83,0.07) 0%, rgba(71,175,143,0.04) 100%)' }}>
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-primary/15 flex items-center justify-center shrink-0">
+              <span className="material-symbols-outlined text-primary text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>info</span>
+            </div>
+            <div>
+              <p className="text-body-sm font-semibold text-on-surface">
+                Guest Mode — <span className="text-primary">{guestUsed}/{guestLimit} PDFs uploaded</span>
+              </p>
+              <p className="text-[11px] text-on-surface-variant">Guest quota resets automatically on {guestResetLabel}.</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <a href="/login" className="px-4 py-1.5 text-[12px] font-semibold text-primary border border-primary/30 rounded-lg hover:bg-primary/10 transition-colors">
+              Sign In
+            </a>
+            <a href="/register" className="px-4 py-1.5 text-[12px] font-bold text-on-primary bg-primary rounded-lg hover:opacity-90 active:scale-95 transition-all shadow-sm">
+              Register Free
+            </a>
+          </div>
+        </div>
+      )}
+
       {/* Dashboard Hero */}
       <section className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        
+
         {/* Left Side: Upload Engine */}
         <div className="lg:col-span-8">
           {!processingFile ? (
@@ -146,29 +257,28 @@ export default function Dashboard({ onSelectDocument, onViewChange, documents, r
               onDragOver={handleDrag}
               onDragLeave={handleDrag}
               onDrop={handleDrop}
-              className={`group cursor-pointer relative glass-card rounded-3xl p-16 flex flex-col items-center justify-center text-center transition-all duration-500 hover:border-primary/40 h-full min-h-[350px] ${
-                dragActive ? 'drag-active' : ''
-              }`}
+              className={`group cursor-pointer relative glass-card rounded-3xl p-16 flex flex-col items-center justify-center text-center transition-all duration-500 hover:border-primary/40 h-full min-h-[350px] ${dragActive ? 'drag-active' : ''
+                }`}
               id="drop-zone"
               style={{ background: 'linear-gradient(135deg, var(--glass-bg) 0%, color-mix(in srgb, var(--surface-container) 60%, transparent) 100%)' }}
             >
               <div className="absolute inset-0 border-2 border-dashed border-outline-variant/40 rounded-3xl group-hover:border-primary/50 transition-colors m-4"></div>
-              
+
               <div className="relative z-10">
                 <div className="w-20 h-20 rounded-3xl bg-primary/10 text-primary flex items-center justify-center mb-6 transition-all duration-500 group-hover:scale-110 group-hover:bg-primary/20 shadow-xl shadow-primary/5 mx-auto">
                   <span className="material-symbols-outlined text-5xl">upload_file</span>
                 </div>
-                
+
                 <h2 className="text-headline-md text-on-surface mb-3 tracking-tight">Upload Document</h2>
                 <p className="text-body-md text-on-surface-variant max-w-sm mb-8 leading-relaxed mx-auto">
                   Drop your PDF here for cloud-powered AI indexing and quick dynamic summary analysis.
                 </p>
-                
-                <button className="bg-primary-container text-white px-10 py-3.5 rounded-2xl font-bold shadow-lg shadow-primary/20 hover:shadow-xl hover:shadow-primary/30 active:scale-95 transition-all flex items-center gap-2 mx-auto">
+
+                <button onClick={handleUploadClick} className="bg-primary-container text-white px-10 py-3.5 rounded-2xl font-bold shadow-lg shadow-primary/20 hover:shadow-xl hover:shadow-primary/30 active:scale-95 transition-all flex items-center gap-2 mx-auto">
                   <span className="material-symbols-outlined text-xl">add_circle</span>
                   Select Document
                 </button>
-                <input type="file" onChange={handleFileChange} accept="application/pdf" className="absolute inset-0 opacity-0 cursor-pointer" />
+                <input type="file" onChange={handleFileChange} disabled={uploadedCount >= 5} accept="application/pdf" className="absolute inset-0 opacity-0 cursor-pointer" />
               </div>
             </div>
           ) : (
@@ -225,11 +335,11 @@ export default function Dashboard({ onSelectDocument, onViewChange, documents, r
               </div>
               <h3 className="text-title-sm text-on-surface mb-2 font-bold">Productivity Metrics</h3>
               <p className="text-body-sm text-on-surface-variant mb-6 leading-relaxed">
-                Tracked hours and layout pages analyzed efficiently via server workflow loops.
+                Based on the actual page count processed across your PDFs.
               </p>
               <div className="grid grid-cols-2 gap-4 text-center bg-surface-container-low/40 p-3.5 rounded-2xl border border-outline-variant/10">
                 <div className="border-r border-outline-variant/30 pr-2">
-                  <span className="text-[10px] font-bold text-outline uppercase block">Est. Pages</span>
+                  <span className="text-[10px] font-bold text-outline uppercase block">PDF Pages</span>
                   <span className="text-headline-sm font-bold text-on-surface mt-1 block">{estimatedPages}</span>
                 </div>
                 <div>
@@ -244,6 +354,54 @@ export default function Dashboard({ onSelectDocument, onViewChange, documents, r
             </div>
           </div>
 
+          {/* Guest PDF Limit Card - only shown to non-logged-in users */}
+          {!user && (
+            <div className="glass-card rounded-3xl p-8 shadow-pro relative overflow-hidden border border-primary/20">
+              <div className="absolute -top-6 -right-6 w-24 h-24 bg-primary/10 rounded-full blur-2xl"></div>
+              <div className="flex items-center justify-between mb-4">
+                <span className="text-[10px] font-bold text-outline uppercase tracking-widest">Guest Mode</span>
+                <span className="material-symbols-outlined text-primary text-xl" style={{ fontVariationSettings: "'FILL' 1" }}>person_off</span>
+              </div>
+              <div className="mb-3">
+                <div className="flex items-end gap-1 mb-1">
+                  <span className="text-display-lg text-on-surface font-bold">{guestUsed}</span>
+                  <span className="text-on-surface-variant text-body-md mb-1.5">/{guestLimit}</span>
+                </div>
+                <span className="text-[11px] text-on-surface-variant font-semibold uppercase tracking-wider">Free PDFs Used</span>
+              </div>
+              <div className="w-full h-2.5 bg-surface-container-highest rounded-full overflow-hidden mb-4">
+                <div
+                  className="h-full rounded-full transition-all duration-500"
+                  style={{
+                    width: `${Math.min((guestUsed / guestLimit) * 100, 100)}%`,
+                    background: guestUsed >= guestLimit ? 'var(--error)' : 'var(--primary)'
+                  }}
+                ></div>
+              </div>
+              {guestUsed >= guestLimit ? (
+                <div className="mb-4 space-y-1.5">
+                  <p className="text-body-sm text-error font-semibold flex items-center gap-1.5">
+                    <span className="material-symbols-outlined text-[16px]">warning</span>
+                    Limit reached!
+                  </p>
+                  <p className="text-[11px] text-on-surface-variant">Resets on {guestResetLabel}.</p>
+                </div>
+              ) : (
+                <div className="mb-4 space-y-1.5">
+                  <p className="text-body-sm text-on-surface-variant">
+                    {guestRemaining} upload{guestRemaining !== 1 ? 's' : ''} remaining for guest
+                  </p>
+                  <p className="text-[11px] text-on-surface-variant">Resets on {guestResetLabel}.</p>
+                </div>
+              )}
+              <a
+                href="/register"
+                className="block w-full py-2.5 bg-primary text-on-primary rounded-xl font-bold text-body-sm text-center hover:opacity-90 active:scale-95 transition-all shadow-md shadow-primary/20"
+              >
+                Sign Up for Unlimited
+              </a>
+            </div>
+          )}
           <div className="glass-card rounded-3xl p-8 flex-1 shadow-pro">
             <div className="flex items-center justify-between mb-6">
               <span className="text-label-caps text-outline uppercase tracking-widest font-bold">Total Documents</span>
@@ -267,7 +425,7 @@ export default function Dashboard({ onSelectDocument, onViewChange, documents, r
             <h3 className="text-headline-md text-on-surface tracking-tight">Recent Intelligence</h3>
             <p className="text-body-sm text-on-surface-variant mt-1">Your secure cloud processed summaries</p>
           </div>
-          <button onClick={() => onViewChange('library')} className="text-primary font-bold text-body-sm flex items-center gap-1 hover:gap-2 transition-all">
+          <button onClick={() => navigate('/library')} className="text-primary font-bold text-body-sm flex items-center gap-1 hover:gap-2 transition-all">
             View Library <span className="material-symbols-outlined text-sm">arrow_forward</span>
           </button>
         </div>
@@ -353,7 +511,7 @@ export default function Dashboard({ onSelectDocument, onViewChange, documents, r
               </div>
             </div>
           </div>
-          <button onClick={() => onViewChange('library')} className="mt-6 self-start bg-primary text-on-primary px-6 py-2.5 rounded-xl font-bold text-body-sm flex items-center gap-2 hover:opacity-95 transition-all shadow-sm relative z-10">
+          <button onClick={() => navigate('/library')} className="mt-6 self-start bg-primary text-on-primary px-6 py-2.5 rounded-xl font-bold text-body-sm flex items-center gap-2 hover:opacity-95 transition-all shadow-sm relative z-10">
             <span className="material-symbols-outlined text-lg">folder_managed</span> Explore Library
           </button>
         </div>
