@@ -1,16 +1,97 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useFeedback } from '../components/FeedbackProvider';
-
+import { useGoogleLogin } from '@react-oauth/google';
 export default function Login({ onLoginSuccess }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
+  const googleLoadingRef = useRef(false);
+  const googleTimeoutRef = useRef(null);
+  const googleFocusListenerRef = useRef(null);
   const navigate = useNavigate();
   const { showToast } = useFeedback();
 
-  // Parallax translation offset for the visual image (Register jesa behavior)
+  const setGoogleLoadingState = (value) => {
+    googleLoadingRef.current = value;
+    setGoogleLoading(value);
+  };
+
+  const clearGoogleTimeout = () => {
+    if (googleTimeoutRef.current) {
+      window.clearTimeout(googleTimeoutRef.current);
+      googleTimeoutRef.current = null;
+    }
+    if (googleFocusListenerRef.current) {
+      window.removeEventListener('focus', googleFocusListenerRef.current);
+      googleFocusListenerRef.current = null;
+    }
+  };
+
+  const handleGooglePopupReturn = () => {
+    if (googleLoadingRef.current) {
+      clearGoogleTimeout();
+      setGoogleLoadingState(false);
+      showToast({ title: 'Google Sign-In cancelled', message: 'Popup closed without signing in.', tone: 'warning' });
+    }
+  };
+
+  useEffect(() => {
+    return () => clearGoogleTimeout();
+  }, []);
+
+  const googleLogin = useGoogleLogin({
+    onSuccess: async (tokenResponse) => {
+      try {
+        showToast({ title: 'Connecting', message: 'Verifying with Summify...', tone: 'info' });
+        const res = await fetch('/api/auth/google', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-guest-id': localStorage.getItem('guestId') || 'guest_default' // if guest data migration is needed
+          },
+          body: JSON.stringify({ token: tokenResponse.access_token }),
+        });
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Google Authentication failed');
+
+        onLoginSuccess(data.token, data.user);
+        showToast({ title: 'Welcome', message: 'Logged in successfully via Google!', tone: 'success' });
+        navigate('/');
+      } catch (err) {
+        showToast({ title: 'Auth Failed', message: err.message, tone: 'danger' });
+      } finally {
+        clearGoogleTimeout();
+        setGoogleLoadingState(false);
+      }
+    },
+    onError: () => {
+      clearGoogleTimeout();
+      setGoogleLoadingState(false);
+      showToast({ title: 'Error', message: 'Google Sign-In was cancelled.', tone: 'warning' });
+    },
+    onNonOAuthError: (error) => {
+      clearGoogleTimeout();
+      setGoogleLoadingState(false);
+      showToast({ title: 'Google Sign-In failed', message: error?.error || 'Please try again.', tone: 'danger' });
+    }
+  });
+
+  const handleGoogleButtonClick = () => {
+    if (googleLoadingRef.current) return;
+    setGoogleLoadingState(true);
+    googleLogin();
+    googleFocusListenerRef.current = handleGooglePopupReturn;
+    window.addEventListener('focus', googleFocusListenerRef.current);
+    googleTimeoutRef.current = window.setTimeout(() => {
+      if (googleLoadingRef.current) {
+        handleGooglePopupReturn();
+      }
+    }, 15000);
+  };  // Parallax translation offset for the visual image (Register jesa behavior)
   const [translate, setTranslate] = useState({ x: 0, y: 0 });
 
   const handleMouseMove = (e) => {
@@ -22,13 +103,6 @@ export default function Login({ onLoginSuccess }) {
     setTranslate({ x: moveX, y: moveY });
   };
 
-  const handleGoogleLogin = () => {
-    showToast({
-      title: 'Connecting',
-      message: 'Opening Google Sign-In...',
-      tone: 'info'
-    });
-  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -80,7 +154,7 @@ export default function Login({ onLoginSuccess }) {
 
   return (
     <main className="flex h-screen w-full overflow-hidden bg-black text-white">
-      
+
       {/* VISUAL SIDE (LEFT) - Matching Register Theme & Interaction */}
       <section
         className="hidden md:flex flex-1 relative bg-[#09110e] border-r border-neutral-900 overflow-hidden select-none"
@@ -134,7 +208,7 @@ export default function Login({ onLoginSuccess }) {
 
       {/* LOGIN FORM SIDE (RIGHT) - With Independent Scroll Flow */}
       <section className="flex-1 flex flex-col justify-between px-6 py-8 md:px-16 lg:px-24 bg-[#0c0d0e] z-10 overflow-y-auto">
-        
+
         {/* Top: Brand Anchor Header */}
         <div className="flex items-center gap-3 w-full pb-6">
           <svg
@@ -237,16 +311,26 @@ export default function Login({ onLoginSuccess }) {
           {/* Continue with Google Button */}
           <button
             type="button"
-            onClick={handleGoogleLogin}
-            className="w-full py-3 px-4 bg-neutral-900 border border-neutral-800 rounded-[10px] text-neutral-200 font-medium shadow-sm flex items-center justify-center gap-3 hover:bg-neutral-800 active:scale-[0.98] transition-all"
+            onClick={handleGoogleButtonClick}
+            disabled={loading || googleLoading}
+            className="w-full py-3 px-4 bg-neutral-900 border border-neutral-800 rounded-[10px] text-neutral-200 font-medium shadow-sm flex items-center justify-center gap-3 hover:bg-neutral-800 active:scale-[0.98] transition-all disabled:opacity-70 disabled:cursor-not-allowed"
           >
-            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
-              <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
-              <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" fill="#FBBC05" />
-              <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" fill="#EA4335" />
-            </svg>
-            Continue with Google
+            {googleLoading ? (
+              <>
+                <span className="w-5 h-5 rounded-full border-2 border-white/30 border-t-white animate-spin" />
+                <span>Please wait...</span>
+              </>
+            ) : (
+              <>
+                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
+                  <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
+                  <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" fill="#FBBC05" />
+                  <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" fill="#EA4335" />
+                </svg>
+                Continue with Google
+              </>
+            )}
           </button>
 
           {/* Footer Link */}

@@ -10,7 +10,7 @@ const toneStyles = {
   info: {
     label: 'Windows Security',
     icon: 'shield_with_heart',
-    accent: 'bg-[#0078d4]', 
+    accent: 'bg-[#0078d4]',
     iconClass: 'text-[#0078d4]',
     border: 'border-black/[0.08] dark:border-white/[0.08]',
     confirmClass: 'bg-[#0078d4] text-white hover:bg-[#106ebe] active:bg-[#005a9e]',
@@ -18,15 +18,15 @@ const toneStyles = {
   success: {
     label: 'Completed',
     icon: 'verified',
-    accent: 'bg-[#107c41]', 
+    accent: 'bg-[#107c41]',
     iconClass: 'text-[#107c41]',
     border: 'border-black/[0.08] dark:border-white/[0.08]',
     confirmClass: 'bg-[#107c41] text-white hover:bg-[#0b5930] active:bg-[#084324]',
   },
   warning: {
     label: 'User Account Control',
-    icon: 'shield', 
-    accent: 'bg-[#fff100]', 
+    icon: 'shield',
+    accent: 'bg-[#fff100]',
     iconClass: 'text-[#e81123] dark:text-[#ffb900]',
     border: 'border-black/[0.12] dark:border-white/[0.12]',
     confirmClass: 'bg-[#0078d4] text-white hover:bg-[#106ebe] active:bg-[#005a9e]',
@@ -34,7 +34,7 @@ const toneStyles = {
   danger: {
     label: 'Blocked',
     icon: 'gpp_bad',
-    accent: 'bg-[#a80000]', 
+    accent: 'bg-[#a80000]',
     iconClass: 'text-[#a80000]',
     border: 'border-black/[0.08] dark:border-white/[0.08]',
     confirmClass: 'bg-[#a80000] text-white hover:bg-[#b32020] active:bg-[#800000]',
@@ -277,9 +277,18 @@ export function useFeedback() {
 
 function ToastViewport({ toasts, onDismiss, portalTarget }) {
   return createPortal(
-    <div className="pointer-events-none fixed bottom-0 right-0 z-[240] p-3 sm:p-4 md:p-6 w-full max-w-[380px] flex flex-col gap-2 overflow-hidden">
+    /* gap-2 ko yahan se remove kar dia taake hidden elements space na lein */
+    <div className="pointer-events-none fixed bottom-0 right-0 z-[240] p-3 sm:p-4 md:p-6 w-full max-w-[380px] flex flex-col overflow-hidden">
       {[...toasts].reverse().map((toast) => (
-        <div key={toast.id} className="w-full transform-gpu">
+        <div 
+          key={toast.id} 
+          /* overflow-hidden aur mb-2 / mb-0 dynamic spacing add ki hai */
+          className={`w-full transform-gpu transition-all duration-300 overflow-hidden ${
+            toast.phase === 'exit' 
+              ? 'max-h-0 opacity-0 scale-95 pointer-events-none mb-0' 
+              : 'max-h-[200px] opacity-100 mb-2'
+          }`}
+        >
           <ToastCard toast={toast} onDismiss={onDismiss} />
         </div>
       ))}
@@ -343,7 +352,7 @@ function FeedbackDialog({ dialogView, onResolve, portalTarget }) {
         className={`absolute inset-0 bg-black/40 dark:bg-[#090d10]/70 backdrop-blur-[12px] transition-all duration-200 ${getBackdropPhaseClass(dialogView.phase)}`}
         onClick={() => onResolve(dialogView.kind === 'alert')}
       ></div>
-      
+
       {/* Modern High-End Structural Card */}
       <div
         role={dialogView.kind === 'confirm' ? 'alertdialog' : 'dialog'}
@@ -375,7 +384,7 @@ function FeedbackDialog({ dialogView, onResolve, portalTarget }) {
                 {dialogView.tone === 'warning' && typeof window !== 'undefined' && !document.documentElement.classList.contains('dark') ? 'warning' : styles.icon}
               </span>
             </div>
-            
+
             <h2 className="text-[17px] font-bold tracking-tight text-neutral-900 dark:text-white">
               {dialogView.title}
             </h2>

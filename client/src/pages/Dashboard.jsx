@@ -223,7 +223,7 @@ export default function Dashboard({ onSelectDocument, documents, refreshDocument
 
       {/* Guest Mode Top Banner */}
       {!user && (
-        <div className="flex items-center justify-between gap-4 px-5 py-3.5 rounded-2xl bg-primary/8 border border-primary/20" style={{ background: 'linear-gradient(135deg, rgba(0,108,83,0.07) 0%, rgba(71,175,143,0.04) 100%)' }}>
+        <div className="flex items-center justify-between gap-4 px-5 py-3.5 rounded-2xl bg-primary/8 dark:bg-highest border border-primary/20 dark:border-gray-400/50" style={{ background: 'linear-gradient(135deg, rgba(0,108,83,0.07) 0%, rgba(71,175,143,0.04) 100%)' }}>
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-lg bg-primary/15 flex items-center justify-center shrink-0">
               <span className="material-symbols-outlined text-primary text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>info</span>
@@ -236,7 +236,7 @@ export default function Dashboard({ onSelectDocument, documents, refreshDocument
             </div>
           </div>
           <div className="flex items-center gap-2 shrink-0">
-            <a href="/login" className="px-4 py-1.5 text-[12px] font-semibold text-primary border border-primary/30 rounded-lg hover:bg-primary/10 transition-colors">
+            <a href="/login" className="px-4 py-1.5 text-[12px] font-semibold text-primary border border-primary/30 rounded-lg hover:bg-primary/10 transition-colors dark:border-gray-400/50">
               Sign In
             </a>
             <a href="/register" className="px-4 py-1.5 text-[12px] font-bold text-on-primary bg-primary rounded-lg hover:opacity-90 active:scale-95 transition-all shadow-sm">
@@ -247,10 +247,10 @@ export default function Dashboard({ onSelectDocument, documents, refreshDocument
       )}
 
       {/* Dashboard Hero */}
-      <section className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+      <section className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
 
         {/* Left Side: Upload Engine */}
-        <div className="lg:col-span-8">
+        <div className="lg:col-span-8 self-start">
           {!processingFile ? (
             <div
               onDragEnter={handleDrag}
@@ -282,21 +282,21 @@ export default function Dashboard({ onSelectDocument, documents, refreshDocument
               </div>
             </div>
           ) : (
-            <div className="glass-card rounded-3xl p-12 border border-primary/20 bg-primary/5 flex flex-col justify-center items-center text-center h-full min-h-[350px] shadow-xl relative overflow-hidden">
-              <div className="absolute inset-0 border-2 border-solid border-primary/10 rounded-3xl m-4"></div>
+            <div className="glass-card rounded-3xl p-12 border border-primary/20 border-primary/20 bg-primary/5 flex flex-col justify-center items-center text-center h-full min-h-[350px] shadow-xl relative overflow-hidden">
+              <div className="absolute inset-0 border-2 border-solid border-primary/10 dark:border-gray-400/50 rounded-3xl m-4"></div>
               <div className="relative z-10 w-full max-w-md">
                 <div className="w-16 h-16 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mb-6 animate-spin mx-auto">
                   <span className="material-symbols-outlined text-3xl">sync</span>
                 </div>
                 <h3 className="text-headline-sm text-on-surface mb-2 font-bold truncate">{processingFile.name}</h3>
-                <div className="flex items-center justify-center gap-2 text-primary font-mono text-xs uppercase tracking-widest font-bold mb-6 bg-primary/10 py-1.5 px-4 rounded-full w-max mx-auto border border-primary/20">
+                <div className="flex items-center justify-center gap-2 text-primary font-mono text-xs uppercase tracking-widest font-bold mb-6 bg-primary/10 py-1.5 px-4 rounded-full w-max mx-auto border border-primary/20 dark:border-gray-400/50">
                   <span className="inline-block w-2 h-2 rounded-full bg-primary animate-ping"></span>
                   {processingStatus}
                 </div>
-                <div className="w-full h-3 bg-surface-container-highest rounded-full overflow-hidden mb-4 p-[2px] border border-outline-variant/20">
+                <div className="w-full h-3 bg-surface-container-highest rounded-full overflow-hidden mb-4 p-[2px] border border-outline-variant/20 dark:border-gray-400/50">
                   <div className="h-full bg-primary rounded-full transition-all duration-500 ease-out" style={{ width: `${getProgressPercentage(processingStatus)}%` }}></div>
                 </div>
-                <div className="text-left bg-surface-container-low/50 p-4 rounded-xl border border-outline-variant/20 space-y-2 text-xs font-medium text-on-surface-variant">
+                <div className="text-left bg-surface-container-low/50 p-4 rounded-xl border border-outline-variant/20 dark:border-gray-400/50 space-y-2 text-xs font-medium text-on-surface-variant">
                   <div className={`flex items-center gap-2 ${processingStatus === 'Uploading' ? 'text-primary font-bold' : 'text-outline'}`}>
                     <span className="material-symbols-outlined text-sm">{getProgressPercentage(processingStatus) > 20 ? 'check_circle' : 'radio_button_checked'}</span>
                     <span>Uploading file to cloud workspace</span>
@@ -328,7 +328,7 @@ export default function Dashboard({ onSelectDocument, documents, refreshDocument
           <div className="glass-card rounded-3xl p-8 flex-1 flex flex-col justify-between shadow-pro relative overflow-hidden group">
             <div>
               <div className="flex items-center justify-between mb-4">
-                <span className="text-[10px] font-bold text-primary uppercase tracking-widest bg-primary/10 px-3 py-1 rounded-full border border-primary/20">
+                <span className="text-[10px] font-bold text-primary uppercase tracking-widest bg-primary/10 px-3 py-1 rounded-full border border-primary/20 dark:border-gray-400/50">
                   Analytics Platform
                 </span>
                 <span className="material-symbols-outlined text-primary text-xl">analytics</span>
@@ -337,8 +337,8 @@ export default function Dashboard({ onSelectDocument, documents, refreshDocument
               <p className="text-body-sm text-on-surface-variant mb-6 leading-relaxed">
                 Based on the actual page count processed across your PDFs.
               </p>
-              <div className="grid grid-cols-2 gap-4 text-center bg-surface-container-low/40 p-3.5 rounded-2xl border border-outline-variant/10">
-                <div className="border-r border-outline-variant/30 pr-2">
+              <div className="grid grid-cols-2 gap-4 text-center bg-surface-container-low/40 p-3.5 rounded-2xl border border-outline-variant/10 dark:border-gray-400/50">
+                <div className="border-r border-outline-variant/30 dark:border-gray-400/50 pr-2">
                   <span className="text-[10px] font-bold text-outline uppercase block">PDF Pages</span>
                   <span className="text-headline-sm font-bold text-on-surface mt-1 block">{estimatedPages}</span>
                 </div>
@@ -348,7 +348,7 @@ export default function Dashboard({ onSelectDocument, documents, refreshDocument
                 </div>
               </div>
             </div>
-            <div className="mt-4 pt-3 border-t border-outline-variant/20 flex items-center gap-2 text-[11px] font-medium text-on-surface-variant">
+            <div className="mt-4 pt-3 border-t border-outline-variant/20 dark:border-gray-400/50 flex items-center gap-2 text-[11px] font-medium text-on-surface-variant">
               <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
               <span>Web app cloud instances synced</span>
             </div>
@@ -356,7 +356,7 @@ export default function Dashboard({ onSelectDocument, documents, refreshDocument
 
           {/* Guest PDF Limit Card - only shown to non-logged-in users */}
           {!user && (
-            <div className="glass-card rounded-3xl p-8 shadow-pro relative overflow-hidden border border-primary/20">
+            <div className="glass-card rounded-3xl p-8 shadow-pro relative overflow-hidden border border-primary/20 dark:border-gray-400/50">
               <div className="absolute -top-6 -right-6 w-24 h-24 bg-primary/10 rounded-full blur-2xl"></div>
               <div className="flex items-center justify-between mb-4">
                 <span className="text-[10px] font-bold text-outline uppercase tracking-widest">Guest Mode</span>
@@ -431,7 +431,7 @@ export default function Dashboard({ onSelectDocument, documents, refreshDocument
         </div>
 
         {documents.length === 0 ? (
-          <div className="text-center py-16 bg-surface-container rounded-3xl border border-outline-variant/30 shadow-sm">
+          <div className="text-center py-16 bg-surface-container rounded-3xl border border-outline-variant/30 dark:border-gray-400/50 shadow-sm">
             <span className="material-symbols-outlined text-5xl text-outline-variant/60 mb-3">folder_open</span>
             <p className="text-body-md text-on-surface-variant font-medium">No documents processed yet</p>
           </div>
@@ -454,7 +454,7 @@ export default function Dashboard({ onSelectDocument, documents, refreshDocument
                       {doc.status === 'Ready for Chat' ? doc.recentOverview || 'Summary ready for interactive prompt chat.' : 'Analyzing text vectors.'}
                     </p>
                   </div>
-                  <div className="flex items-center justify-between pt-5 border-t border-outline-variant/30 mt-auto" onClick={e => e.stopPropagation()}>
+                  <div className="flex items-center justify-between pt-5 border-t border-outline-variant/30 dark:border-gray-400/50 mt-auto" onClick={e => e.stopPropagation()}>
                     <div className="flex items-center gap-2 text-outline">
                       <span className="material-symbols-outlined text-sm">calendar_today</span>
                       <span className="text-[12px] font-medium">{doc.uploadDate}</span>
@@ -480,15 +480,15 @@ export default function Dashboard({ onSelectDocument, documents, refreshDocument
               Enterprise layer file handling pipelines with built-in database row security protocols. No unencrypted caching on public clouds.
             </p>
             <div className="flex flex-wrap gap-3">
-              <span className="px-4 py-1.5 bg-surface-container-highest/60 border border-surface-container-highest/40 rounded-full text-[11px] font-bold text-on-surface-variant shadow-sm">Cloud Firewall</span>
-              <span className="px-4 py-1.5 bg-surface-container-highest/60 border border-surface-container-highest/40 rounded-full text-[11px] font-bold text-on-surface-variant shadow-sm">Row Level Safety</span>
+              <span className="px-4 py-1.5 bg-surface-container-highest/60 border border-surface-container-highest/40 dark:border-gray-400/50 rounded-full text-[11px] font-bold text-on-surface-variant shadow-sm">Cloud Firewall</span>
+              <span className="px-4 py-1.5 bg-surface-container-highest/60 border border-surface-container-highest/40 dark:border-gray-400/50 rounded-full text-[11px] font-bold text-on-surface-variant shadow-sm">Row Level Safety</span>
             </div>
           </div>
           <span className="material-symbols-outlined absolute -bottom-8 -right-8 text-[12rem] text-primary opacity-[0.03] transform -rotate-12">shield</span>
         </div>
 
         {/* Upgraded Prompt Helper Panel */}
-        <div className="glass-card rounded-3xl p-10 flex flex-col justify-between shadow-pro relative overflow-hidden group border border-outline-variant/10">
+        <div className="glass-card rounded-3xl p-10 flex flex-col justify-between shadow-pro relative overflow-hidden group border border-outline-variant/10 dark:border-gray-400/50">
           <div className="relative z-10 w-full">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-title-sm text-primary flex items-center gap-2 font-bold">
@@ -501,11 +501,11 @@ export default function Dashboard({ onSelectDocument, documents, refreshDocument
               Open your target summarized document library item and perform these robust operational commands directly in chat:
             </p>
             <div className="space-y-2.5">
-              <div className="flex items-start gap-2.5 bg-surface-container-low/50 p-2.5 rounded-xl border border-outline-variant/10 text-xs font-medium text-on-surface-variant">
+              <div className="flex items-start gap-2.5 bg-surface-container-low/50 p-2.5 rounded-xl border border-outline-variant/10 dark:border-gray-400/50 text-xs font-medium text-on-surface-variant">
                 <span className="material-symbols-outlined text-primary text-sm mt-0.5">ads_click</span>
                 <span>"Compile an inventory list of dates, milestones, and deadlines mentioned across the document."</span>
               </div>
-              <div className="flex items-start gap-2.5 bg-surface-container-low/50 p-2.5 rounded-xl border border-outline-variant/10 text-xs font-medium text-on-surface-variant">
+              <div className="flex items-start gap-2.5 bg-surface-container-low/50 p-2.5 rounded-xl border border-outline-variant/10 dark:border-gray-400/50 text-xs font-medium text-on-surface-variant">
                 <span className="material-symbols-outlined text-primary text-sm mt-0.5">ads_click</span>
                 <span>"Structure the layout's primary numerical data matrices into a clean clean summary chart markdown."</span>
               </div>

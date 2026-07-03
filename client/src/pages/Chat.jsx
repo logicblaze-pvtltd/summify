@@ -254,7 +254,7 @@ export default function Chat({ documents, refreshDocuments, onNewSummary, user }
 
           {activeLeftTab === 'summary' ? (
             <div className="flex-grow flex flex-col h-full w-full relative">
-              <div className="absolute top-11 left-0 right-0 h-11 z-25 backdrop-blur-lg backdrop-saturate-125 bg-surface-container-lowest/65 border-b border-outline-variant/10 p-1.5 flex gap-1 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.03)]">
+              <div className="absolute top-11 left-0 right-0 h-11 z-25 backdrop-blur-lg backdrop-saturate-125 bg-surface-container-lowest/65 border-b border-outline-variant/10 dark:border-gray-400/50 p-1.5 flex gap-1 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.03)]">
                 {['short', 'detailed', 'bullet', 'executive'].map((type) => (
                   <button key={type} onClick={() => setActiveSummaryType(type)} className={`flex-1 py-1.5 px-3 rounded-lg text-[11px] font-bold uppercase tracking-wider text-center transition-all duration-150 ${activeSummaryType === type ? 'bg-surface-container dark:text-white shadow-sm' : 'text-on-surface-variant hover:bg-surface-container/50'}`}>
                     {type}
@@ -271,7 +271,7 @@ export default function Chat({ documents, refreshDocuments, onNewSummary, user }
                 ) : (
                   // Summary Report ke liye conditional check
                   <div
-                    className={`prose max-w-none prose-sm bg-white dark:bg-gray-800 bg-surface-container shadow-pro p-6 space-y-4 border border-outline-variant/20 dark:border-gray-700 rounded ${containsUrdu(doc.summaries[activeSummaryType]) ? 'urdu-calligraphy' : ''}`}
+                    className={`prose max-w-none prose-sm mt-4 bg-white dark:bg-gray-800 bg-surface-container shadow-pro p-6 space-y-4 border border-outline-variant/20 dark:border-gray-700 rounded ${containsUrdu(doc.summaries[activeSummaryType]) ? 'urdu-calligraphy' : ''}`}
                     dangerouslySetInnerHTML={{ __html: renderMarkdown(doc.summaries[activeSummaryType]) }}
                   />
                 )}
@@ -305,7 +305,7 @@ export default function Chat({ documents, refreshDocuments, onNewSummary, user }
 
               <div className="flex-grow overflow-auto bg-surface-container-low/20 pt-[84px] p-6 h-full">
                 <div
-                  className="bg-white dark:bg-gray-800 w-full max-w-[800px] bg-surface-container shadow-pro min-h-[700px] p-10 space-y-4 border border-outline-variant/20 dark:border-gray-700 rounded mx-auto"
+                  className="bg-white mt-4 dark:bg-gray-800 w-full max-w-[800px] bg-surface-container shadow-pro min-h-[700px] p-10 space-y-4 border border-outline-variant/20 dark:border-gray-700 rounded mx-auto"
                   style={{ zoom: zoomLevel / 100 }}
                 >
                   <div className="flex items-center justify-between border-b border-gray-400/20 dark:border-gray-700 pb-2 mb-4">
@@ -326,7 +326,7 @@ export default function Chat({ documents, refreshDocuments, onNewSummary, user }
         <div className="flex-1 flex flex-col bg-surface-container-highest rounded-xl border border-gray-400/20 dark:border-gray-800 overflow-hidden shadow-xl min-w-0 relative glass-gradient-panel">
           {/* Guest Lock Overlay - shown if not logged in */}
           {!user && (
-            <div className="absolute inset-0 z-50 flex flex-col items-center justify-center p-8 text-center" style={{ background: 'linear-gradient(135deg, rgba(0,108,83,0.06) 0%, rgba(71,175,143,0.04) 100%)', backdropFilter: 'blur(2px)' }}>
+            <div className="absolute inset-0 z-50 flex flex-col items-center justify-center p-8 text-center" style={{ background: 'linear-gradient(135deg, rgba(0,108,83,0.06) 0%, rgba(71,175,143,0.04) 100%)', backdropFilter: 'blur(8px)' }}>
               <div className="relative mb-6">
                 <div className="w-20 h-20 rounded-3xl bg-primary/10 border border-primary/20 flex items-center justify-center shadow-lg">
                   <span className="material-symbols-outlined text-primary text-[40px]" style={{ fontVariationSettings: "'FILL' 1" }}>lock</span>
@@ -421,7 +421,7 @@ export default function Chat({ documents, refreshDocuments, onNewSummary, user }
 
               {loading && (
                 <div className="flex gap-3">
-                  <div className="w-7 h-7 rounded-lg bg-surface-container-low flex items-center justify-center shrink-0 border border-outline-variant/10">
+                  <div className="w-7 h-7 rounded-lg bg-surface-container-low flex items-center justify-center shrink-0 border border-outline-variant/10 dark:border-gray-400/50">
                     <span className="material-symbols-outlined text-primary text-[16px] animate-spin">progress_activity</span>
                   </div>
                   <div className="bg-surface-container-low/60 p-3.5 rounded-xl rounded-tl-none max-w-[80%]">

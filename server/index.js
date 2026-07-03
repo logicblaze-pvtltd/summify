@@ -16,8 +16,20 @@ dotenv.config();
 
 import jwt from "jsonwebtoken";
 import { initDatabase, getUserByEmail, getUserById, createUser, countDocumentsByUserId, deleteDocumentById, getDocumentById, getDocumentCount, getDocumentsByUserId, reassignDocumentsByUserId, saveDocument } from "./database.js";
-
+import { OAuth2Client } from 'google-auth-library';
+const client = new OAuth2Client();
 const JWT_SECRET = process.env.JWT_SECRET || "summify_secret_key_123456";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const app = express();
+const PORT = process.env.PORT || 5000;
+
+app.use(cors());
+app.use(express.json());
+
+// ============ HELPER FUNCTIONS ============
 
 function authenticateToken(req, res, next) {
   const authHeader = req.headers["authorization"];
@@ -53,86 +65,6 @@ function verifyPassword(password, storedHash) {
   return hash === originalHash;
 }
 
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-const app = express();
-const PORT = process.env.PORT || 5000;
-
-app.use(cors());
-app.use(express.json());
-
-// Auth: Register
-app.post("/api/auth/register", async (req, res) => {
-  try {
-    const { name, email, password } = req.body;
-    if (!name || !email || !password) {
-      return res.status(400).json({ error: "Name, email, and password are required" });
-    }
-
-    const existingUser = await getUserByEmail(email);
-    if (existingUser) {
-      return res.status(400).json({ error: "Email is already registered" });
-    }
-
-    const passwordHash = hashPassword(password);
-    const userId = await createUser(name, email, passwordHash);
-    const guestDocumentsMigrated = migrateGuestDocumentsToUser(req.headers["x-guest-id"], userId);
-
-    const token = jwt.sign({ id: userId, email, name }, JWT_SECRET, { expiresIn: "7d" });
-    res.status(201).json({
-      success: true,
-      token,
-      user: { id: userId, name, email },
-      guestDocumentsMigrated
-    });
-  } catch (error) {
-    console.error("Registration error:", error);
-    res.status(500).json({ error: "Internal server error during registration" });
-  }
-});
-
-// Auth: Login
-app.post("/api/auth/login", async (req, res) => {
-  try {
-    const { email, password } = req.body;
-    if (!email || !password) {
-      return res.status(400).json({ error: "Email and password are required" });
-    }
-
-    const user = await getUserByEmail(email);
-    if (!user || !verifyPassword(password, user.password_hash)) {
-      return res.status(400).json({ error: "Invalid email or password" });
-    }
-
-    const guestDocumentsMigrated = migrateGuestDocumentsToUser(req.headers["x-guest-id"], user.id);
-    const token = jwt.sign({ id: user.id, email: user.email, name: user.name }, JWT_SECRET, { expiresIn: "7d" });
-    res.json({
-      success: true,
-      token,
-      user: { id: user.id, name: user.name, email: user.email },
-      guestDocumentsMigrated
-    });
-  } catch (error) {
-    console.error("Login error:", error);
-    res.status(500).json({ error: "Internal server error during login" });
-  }
-});
-
-// Auth: Get Profile
-app.get("/api/auth/profile", authenticateToken, async (req, res) => {
-  try {
-    const user = await getUserById(req.user.id);
-    if (!user) return res.status(404).json({ error: "User not found" });
-    res.json({ user });
-  } catch (error) {
-    console.error("Profile fetch error:", error);
-    res.status(500).json({ error: "Internal server error" });
-  }
-});
-
-
 // Ensure directories exist
 const UPLOADS_DIR = path.join(__dirname, "uploads");
 const DATA_DIR = path.join(__dirname, "data");
@@ -149,6 +81,106 @@ const DEFAULT_DOCUMENT_SUMMARIES = {
   bullet: "",
   executive: "",
 };
+
+// ============ AUTH ROUTES ============
+
+app.post("/api/auth/google", async (req, res) => {
+  try {
+    const { token } = req.body;
+    if (!token) return res.status(400).json({ error: "Google token is required" });
+
+    const userInfoRes = await axios.get(`https://www.googleapis.com/oauth2/v3/userinfo?access_token=${token}`);
+    const { email, name, sub: googleId } = userInfoRes.data;
+
+    let user = await getUserByEmail(email);
+
+    if (!user) {
+      const randomPasswordHash = hashPassword(crypto.randomBytes(16).toString('hex'));
+      const userId = await createUser(name, email, randomPasswordHash);
+      user = { id: userId, email, name };
+    }
+
+    const guestDocumentsMigrated = await migrateGuestDocumentsToUser(req.headers["x-guest-id"], user.id);
+    const jwtToken = jwt.sign({ id: user.id, email: user.email, name: user.name }, JWT_SECRET, { expiresIn: "7d" });
+
+    res.json({
+      success: true,
+      token: jwtToken,
+      user: { id: user.id, name: user.name, email: user.email },
+      guestDocumentsMigrated
+    });
+
+  } catch (error) {
+    console.error("Google Auth Error:", error);
+    res.status(500).json({ error: "Google authentication failed on server" });
+  }
+});
+
+app.post("/api/auth/register", async (req, res) => {
+  try {
+    const { name, email, password } = req.body;
+    if (!name || !email || !password) {
+      return res.status(400).json({ error: "Name, email, and password are required" });
+    }
+
+    const existingUser = await getUserByEmail(email);
+    if (existingUser) {
+      return res.status(400).json({ error: "Email is already registered" });
+    }
+
+    const passwordHash = hashPassword(password);
+    const userId = await createUser(name, email, passwordHash);
+    const guestDocumentsMigrated = await migrateGuestDocumentsToUser(req.headers["x-guest-id"], userId);
+
+    const token = jwt.sign({ id: userId, email, name }, JWT_SECRET, { expiresIn: "7d" });
+    res.status(201).json({
+      success: true,
+      token,
+      user: { id: userId, name, email },
+      guestDocumentsMigrated
+    });
+  } catch (error) {
+    console.error("Registration error:", error);
+    res.status(500).json({ error: "Internal server error during registration" });
+  }
+});
+
+app.post("/api/auth/login", async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    if (!email || !password) {
+      return res.status(400).json({ error: "Email and password are required" });
+    }
+
+    const user = await getUserByEmail(email);
+    if (!user || !verifyPassword(password, user.password_hash)) {
+      return res.status(400).json({ error: "Invalid email or password" });
+    }
+
+    const guestDocumentsMigrated = await migrateGuestDocumentsToUser(req.headers["x-guest-id"], user.id);
+    const token = jwt.sign({ id: user.id, email: user.email, name: user.name }, JWT_SECRET, { expiresIn: "7d" });
+    res.json({
+      success: true,
+      token,
+      user: { id: user.id, name: user.name, email: user.email },
+      guestDocumentsMigrated
+    });
+  } catch (error) {
+    console.error("Login error:", error);
+    res.status(500).json({ error: "Internal server error during login" });
+  }
+});
+
+app.get("/api/auth/profile", authenticateToken, async (req, res) => {
+  try {
+    const user = await getUserById(req.user.id);
+    if (!user) return res.status(404).json({ error: "User not found" });
+    res.json({ user });
+  } catch (error) {
+    console.error("Profile fetch error:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
 
 // Helper to read/write persistent files
 const readJsonFile = (filePath, defaultData = []) => {
@@ -337,7 +369,6 @@ let settings = readJsonFile(SETTINGS_FILE, {
 
 // API key always from environment — never stored in settings.json
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "";
-
 // Text Chunking Helper
 function chunkText(text, size = 1000, overlap = 200) {
   const chunks = [];
@@ -432,7 +463,6 @@ let successfulGeminiEmbeddingVersion = null;
 // API Calls to Google Gemini
 async function generateEmbedding(text, docVocab = null) {
   const apiKey = GEMINI_API_KEY;
-
   if (apiKey) {
     // If we have already found a working model, try that first
     if (successfulGeminiEmbeddingModel) {
@@ -963,12 +993,12 @@ app.post("/api/upload", authenticateToken, upload.single("pdf"), async (req, res
           try {
             // Combined master prompt to get all summaries in 1 single API call
             const masterPrompt = `Analyze the following document and provide four distinct types of summaries. 
-Your response must contain all four sections clearly separated by these exact tags: 
-[SHORT_SUMMARY], [DETAILED_SUMMARY], [BULLET_SUMMARY], and [EXECUTIVE_SUMMARY].
-Match the dominant language of the document (if the text is in Urdu, write all summaries in Urdu).
+                  Your response must contain all four sections clearly separated by these exact tags: 
+                  [SHORT_SUMMARY], [DETAILED_SUMMARY], [BULLET_SUMMARY], and [EXECUTIVE_SUMMARY].
+                  Match the dominant language of the document (if the text is in Urdu, write all summaries in Urdu).
 
-Document text:
-${summaryInput}`;
+                  Document text:
+                ${summaryInput}`;
 
             const combinedResponse = await queryLLM(
               "You are an expert document summarization assistant. Respond professionally using the dominant language of the document context.",

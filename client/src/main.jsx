@@ -2,9 +2,9 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import { FeedbackProvider } from './components/FeedbackProvider'
+import { GoogleOAuthProvider } from '@react-oauth/google';
 import './index.css'
 import App from './App.jsx'
-
 // Generate guest session ID if not present
 let guestSessionId = localStorage.getItem('guestSessionId');
 if (!guestSessionId) {
@@ -33,10 +33,12 @@ window.fetch = async function (url, options = {}) {
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    <FeedbackProvider>
-      <BrowserRouter>
-        <App />
-      </BrowserRouter>
-    </FeedbackProvider>
+    <GoogleOAuthProvider clientId="154097788381-p636nmaq55f0bguhn4tt182rk4rouebd.apps.googleusercontent.com">
+      <FeedbackProvider>
+        <BrowserRouter>
+          <App />
+        </BrowserRouter>
+      </FeedbackProvider>
+    </GoogleOAuthProvider>
   </StrictMode>,
 )
