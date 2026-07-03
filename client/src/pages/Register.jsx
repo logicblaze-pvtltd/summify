@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useFeedback } from '../components/FeedbackProvider';
 import { useGoogleLogin } from '@react-oauth/google';
+
 export default function Register({ onLoginSuccess }) {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -53,7 +54,7 @@ export default function Register({ onLoginSuccess }) {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'x-guest-id': localStorage.getItem('guestId') || 'guest_default' // if guest data migration is needed
+            'x-guest-id': localStorage.getItem('guestId') || 'guest_default'
           },
           body: JSON.stringify({ token: tokenResponse.access_token }),
         });
@@ -94,7 +95,8 @@ export default function Register({ onLoginSuccess }) {
         handleGooglePopupReturn();
       }
     }, 15000);
-  };  // Parallax translation offset for the visual image
+  };
+
   const [translate, setTranslate] = useState({ x: 0, y: 0 });
 
   const handleMouseMove = (e) => {
@@ -164,17 +166,14 @@ export default function Register({ onLoginSuccess }) {
   };
 
   return (
-    <main className="flex h-screen w-full overflow-hidden bg-black text-white">
-      {/* Registration Side (Left) */}
-      <section className="flex-1 flex flex-col justify-between px-6 py-8 md:px-16 lg:px-24 bg-[#0c0d0e] z-10 overflow-y-auto">
+    <main className="flex h-screen w-full overflow-hidden bg-zinc-50 dark:bg-black text-neutral-900 dark:text-white transition-colors duration-300">
+      
+      {/* REGISTRATION FORM SIDE (LEFT) */}
+      <section className="flex-1 flex flex-col justify-between px-6 py-8 md:px-16 lg:px-24 bg-white dark:bg-[#0c0d0e] z-10 overflow-y-auto transition-colors duration-300">
 
-        {/* Top: Brand Anchor Header (Ensured Visibility) */}
+        {/* Top: Brand Anchor Header */}
         <div className="flex items-center gap-3 w-full pb-6">
-          <svg
-            className="h-20 w-auto opacity-95"
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 800 250"
-          >
+          <svg className="h-20 w-auto opacity-95" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 250">
             <defs>
               <linearGradient id="sumifyGradient" x1="0%" y1="0%" x2="100%" y2="100%">
                 <stop offset="0%" stopColor="#47AF8F" />
@@ -192,7 +191,7 @@ export default function Register({ onLoginSuccess }) {
               <line x1="62" y1="85" x2="102" y2="85" stroke="#F5F6FB" strokeWidth="5.5" strokeLinecap="round" opacity="0.9" />
               <line x1="62" y1="102" x2="87" y2="102" stroke="url(#sumifyGradient)" strokeWidth="6.5" strokeLinecap="round" />
             </g>
-            <text x="215" y="152" fontFamily="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" fontSize="120" fontWeight="800" fill="#73D9B7" letterSpacing="-2.5">
+            <text x="215" y="152" fontFamily="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" fontSize="120" fontWeight="800" fill="#47AF8F" className="dark:fill-[#73D9B7]" letterSpacing="-2.5">
               Sum<tspan fill="url(#sumifyGradient)">ify</tspan>
             </text>
             <text x="220" y="192" fontFamily="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" fontSize="24" fontWeight="700" fill="#067357" letterSpacing="5" opacity="0.8">
@@ -204,8 +203,8 @@ export default function Register({ onLoginSuccess }) {
         {/* Center: Content & Form Wrapper */}
         <div className="w-full max-w-xl mx-auto my-auto space-y-6">
           <div className="space-y-2 text-left">
-            <h2 className="text-3xl font-extrabold text-neutral-100 tracking-tight">Join the Community</h2>
-            <p className="text-neutral-400 text-sm">Your professional, secure, and AI-powered workspace awaits.</p>
+            <h2 className="text-3xl font-extrabold text-neutral-800 dark:text-neutral-100 tracking-tight">Join the Community</h2>
+            <p className="text-neutral-500 dark:text-neutral-400 text-sm">Your professional, secure, and AI-powered workspace awaits.</p>
           </div>
 
           {/* Registration Form */}
@@ -214,11 +213,11 @@ export default function Register({ onLoginSuccess }) {
             {/* Row 1: Name & Email */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5 text-left">
-                <label className="text-xs font-semibold uppercase tracking-wider text-neutral-400" htmlFor="name">Full Name</label>
+                <label className="text-xs font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400" htmlFor="name">Full Name</label>
                 <div className="relative group">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 material-symbols-outlined text-neutral-500">person</span>
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 material-symbols-outlined text-neutral-400 dark:text-neutral-500">person</span>
                   <input
-                    className="w-full pl-10 pr-4 py-3 bg-neutral-900 border border-neutral-800 rounded-[10px] text-white focus:outline-none custom-focus transition-all placeholder-neutral-600"
+                    className="w-full pl-10 pr-4 py-3 bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-[10px] text-neutral-900 dark:text-white focus:outline-none custom-focus transition-all placeholder-neutral-400 dark:placeholder-neutral-600"
                     id="name"
                     placeholder="Alex Rivera"
                     type="text"
@@ -229,11 +228,11 @@ export default function Register({ onLoginSuccess }) {
               </div>
 
               <div className="space-y-1.5 text-left">
-                <label className="text-xs font-semibold uppercase tracking-wider text-neutral-400" htmlFor="email">Email Address</label>
+                <label className="text-xs font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400" htmlFor="email">Email Address</label>
                 <div className="relative group">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 material-symbols-outlined text-neutral-500">mail</span>
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 material-symbols-outlined text-neutral-400 dark:text-neutral-500">mail</span>
                   <input
-                    className="w-full pl-10 pr-4 py-3 bg-neutral-900 border border-neutral-800 rounded-[10px] text-white focus:outline-none custom-focus transition-all placeholder-neutral-600"
+                    className="w-full pl-10 pr-4 py-3 bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-[10px] text-neutral-900 dark:text-white focus:outline-none custom-focus transition-all placeholder-neutral-400 dark:placeholder-neutral-600"
                     id="email"
                     placeholder="alex@lumina.ai"
                     type="email"
@@ -247,11 +246,11 @@ export default function Register({ onLoginSuccess }) {
             {/* Row 2: Password & Confirm Password */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5 text-left">
-                <label className="text-xs font-semibold uppercase tracking-wider text-neutral-400" htmlFor="password">Password</label>
+                <label className="text-xs font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400" htmlFor="password">Password</label>
                 <div className="relative group">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 material-symbols-outlined text-neutral-500">lock</span>
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 material-symbols-outlined text-neutral-400 dark:text-neutral-500">lock</span>
                   <input
-                    className="w-full pl-10 pr-12 py-3 bg-neutral-900 border border-neutral-800 rounded-[10px] text-white focus:outline-none custom-focus transition-all placeholder-neutral-600"
+                    className="w-full pl-10 pr-12 py-3 bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-[10px] text-neutral-900 dark:text-white focus:outline-none custom-focus transition-all placeholder-neutral-400 dark:placeholder-neutral-600"
                     id="password"
                     placeholder="••••••••"
                     type={showPassword ? "text" : "password"}
@@ -259,7 +258,7 @@ export default function Register({ onLoginSuccess }) {
                     onChange={(e) => setPassword(e.target.value)}
                   />
                   <button
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-white"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 dark:text-neutral-500 hover:text-neutral-900 dark:hover:text-white transition-colors"
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
                   >
@@ -269,11 +268,11 @@ export default function Register({ onLoginSuccess }) {
               </div>
 
               <div className="space-y-1.5 text-left">
-                <label className="text-xs font-semibold uppercase tracking-wider text-neutral-400" htmlFor="confirmPassword">Confirm Password</label>
+                <label className="text-xs font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400" htmlFor="confirmPassword">Confirm Password</label>
                 <div className="relative group">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 material-symbols-outlined text-neutral-500">lock_reset</span>
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 material-symbols-outlined text-neutral-400 dark:text-neutral-500">lock_reset</span>
                   <input
-                    className="w-full pl-10 pr-12 py-3 bg-neutral-900 border border-neutral-800 rounded-[10px] text-white focus:outline-none custom-focus transition-all placeholder-neutral-600"
+                    className="w-full pl-10 pr-12 py-3 bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-[10px] text-neutral-900 dark:text-white focus:outline-none custom-focus transition-all placeholder-neutral-400 dark:placeholder-neutral-600"
                     id="confirmPassword"
                     placeholder="••••••••"
                     type={showConfirmPassword ? "text" : "password"}
@@ -281,7 +280,7 @@ export default function Register({ onLoginSuccess }) {
                     onChange={(e) => setConfirmPassword(e.target.value)}
                   />
                   <button
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-white"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 dark:text-neutral-500 hover:text-neutral-900 dark:hover:text-white transition-colors"
                     type="button"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                   >
@@ -302,9 +301,9 @@ export default function Register({ onLoginSuccess }) {
 
           {/* Divider */}
           <div className="flex items-center my-4">
-            <div className="flex-1 border-t border-neutral-800"></div>
-            <span className="px-3 text-xs text-neutral-500 uppercase font-medium">or</span>
-            <div className="flex-1 border-t border-neutral-800"></div>
+            <div className="flex-1 border-t border-neutral-200 dark:border-neutral-800"></div>
+            <span className="px-3 text-xs text-neutral-400 dark:text-neutral-500 uppercase font-medium">or</span>
+            <div className="flex-1 border-t border-neutral-200 dark:border-neutral-800"></div>
           </div>
 
           {/* Continue with Google Button */}
@@ -312,11 +311,11 @@ export default function Register({ onLoginSuccess }) {
             type="button"
             onClick={handleGoogleButtonClick}
             disabled={loading || googleLoading}
-            className="w-full py-3 px-4 bg-neutral-900 border border-neutral-800 rounded-[10px] text-neutral-200 font-medium shadow-sm flex items-center justify-center gap-3 hover:bg-neutral-800 active:scale-[0.98] transition-all disabled:opacity-70 disabled:cursor-not-allowed"
+            className="w-full py-3 px-4 bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-[10px] text-neutral-700 dark:text-neutral-200 font-medium shadow-sm flex items-center justify-center gap-3 hover:bg-neutral-100 dark:hover:bg-neutral-800 active:scale-[0.98] transition-all disabled:opacity-70 disabled:cursor-not-allowed"
           >
             {googleLoading ? (
               <>
-                <span className="w-5 h-5 rounded-full border-2 border-white/30 border-t-white animate-spin" />
+                <span className="w-5 h-5 rounded-full border-2 border-neutral-400 dark:border-white/30 border-t-neutral-900 dark:border-t-white animate-spin" />
                 <span>Please wait...</span>
               </>
             ) : (
@@ -332,27 +331,28 @@ export default function Register({ onLoginSuccess }) {
             )}
           </button>
 
-          <p className="text-center text-sm text-neutral-400">
+          <p className="text-center text-sm text-neutral-500 dark:text-neutral-400">
             Already have an account?{' '}
-            <Link className="text-[#73D9B7] font-semibold hover:underline" to="/login">Sign in</Link>
+            <Link className="text-[#067357] dark:text-[#73D9B7] font-semibold hover:underline" to="/login">Sign in</Link>
           </p>
         </div>
 
-        {/* Bottom: Local-First Badge */}
+        {/* Bottom: Badge */}
         <div className="flex items-center justify-center gap-2 pt-4 w-full">
           <span className="material-symbols-outlined text-[#48a687] text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>verified_user</span>
-          <span className="text-xs uppercase tracking-wider text-neutral-500 font-semibold">SUMMARIZE PDF USER AI</span>
+          <span className="text-xs uppercase tracking-wider text-neutral-400 dark:text-neutral-500 font-semibold">SUMMARIZE PDF USER AI</span>
         </div>
       </section>
 
-      {/* Visual Side (Right) */}
+      {/* VISUAL SIDE (RIGHT) */}
       <section
-        className="hidden md:flex flex-1 relative bg-[#09110e] border-l border-neutral-900 overflow-hidden select-none"
+        className="hidden md:flex flex-1 relative bg-[#f0f9f6] dark:bg-[#09110e] border-l border-neutral-200 dark:border-neutral-900 overflow-hidden select-none transition-colors duration-300"
         onMouseMove={handleMouseMove}
       >
-        <div className="absolute inset-0 opacity-20">
-          <div className="absolute -top-[20%] -right-[10%] w-[80%] h-[80%] bg-[#48a687]/30 blur-[120px] rounded-full"></div>
-          <div className="absolute -bottom-[10%] -left-[10%] w-[60%] h-[60%] bg-[#73D9B7]/10 blur-[100px] rounded-full"></div>
+        {/* Glow Effects */}
+        <div className="absolute inset-0 opacity-40 dark:opacity-20 transition-opacity">
+          <div className="absolute -top-[20%] -right-[10%] w-[80%] h-[80%] bg-[#48a687]/20 dark:bg-[#48a687]/30 blur-[120px] rounded-full"></div>
+          <div className="absolute -bottom-[10%] -left-[10%] w-[60%] h-[60%] bg-[#73D9B7]/20 dark:bg-[#73D9B7]/10 blur-[100px] rounded-full"></div>
         </div>
 
         <div className="relative z-10 w-full flex flex-col items-center justify-center p-12 lg:p-24 text-center">
@@ -361,30 +361,31 @@ export default function Register({ onLoginSuccess }) {
             style={{ transform: `translate(${translate.x}px, ${translate.y}px)` }}
           >
             <img
-              className="w-full h-auto drop-shadow-2xl rounded-xl"
+              className="w-full h-auto drop-shadow-2xl rounded-xl border border-neutral-200/50 dark:border-neutral-800/50"
               src="https://lh3.googleusercontent.com/aida-public/AB6AXuA_0vKbuhy35xtTHue3O0Ug2SgZ_GwE1oCorlh05xf61l6lbmP5FCSOiZgRD18WzqMqTLpIn1637MorYkUMUW-NkOL1lz2t6P4hw0fK9G-5F6oxrSsqh41fmYrjS5D7NiLdGrHu1Tt6_wuh_t_GnoT_l8XqP8iMtwHBNXjniFf0RZ7ykLhrAf4ZAkid_JPa1yD9h39toyPo1dK7WIJHFTRUnhckNs3MrU_Pnfxmz7Z-iAusf9rUfRw"
               alt="Visual Presentation"
             />
           </div>
           <div className="mt-12 space-y-4 max-w-lg">
             <div className="flex flex-wrap justify-center gap-3">
-              <div className="px-4 py-1.5 bg-neutral-900/80 border border-neutral-800 text-neutral-300 rounded-full flex items-center gap-2 text-xs font-medium">
-                <span className="material-symbols-outlined text-sm text-[#73D9B7]">shield</span>
+              <div className="px-4 py-1.5 bg-white/80 dark:bg-neutral-900/80 border border-neutral-200 dark:border-neutral-800 text-neutral-600 dark:text-neutral-300 rounded-full flex items-center gap-2 text-xs font-medium shadow-sm glassmorphism">
+                <span className="material-symbols-outlined text-sm text-[#067357] dark:text-[#73D9B7]">shield</span>
                 <span>Privacy Guaranteed</span>
               </div>
-              <div className="px-4 py-1.5 bg-neutral-900/80 border border-neutral-800 text-neutral-300 rounded-full flex items-center gap-2 text-xs font-medium">
-                <span className="material-symbols-outlined text-sm text-[#73D9B7]">auto_awesome</span>
+              <div className="px-4 py-1.5 bg-white/80 dark:bg-neutral-900/80 border border-neutral-200 dark:border-neutral-800 text-neutral-600 dark:text-neutral-300 rounded-full flex items-center gap-2 text-xs font-medium shadow-sm glassmorphism">
+                <span className="material-symbols-outlined text-sm text-[#067357] dark:text-[#73D9B7]">auto_awesome</span>
                 <span>AI Insights</span>
               </div>
             </div>
-            <h3 className="text-2xl font-bold text-neutral-100">Designed for Deep Work</h3>
-            <p className="text-neutral-400 text-sm leading-relaxed">
+            <h3 className="text-2xl font-bold text-neutral-800 dark:text-neutral-100">Designed for Deep Work</h3>
+            <p className="text-neutral-500 dark:text-neutral-400 text-sm leading-relaxed">
               Summify is a web-based AI summarizer that transforms lengthy documents into clear, concise insights in seconds.
             </p>
           </div>
         </div>
 
-        <svg className="absolute top-0 right-0 w-full h-full pointer-events-none opacity-[0.02]" viewBox="0 0 800 800" xmlns="http://www.w3.org/2000/svg">
+        {/* Grid Overlay */}
+        <svg className="absolute top-0 right-0 w-full h-full pointer-events-none opacity-[0.04] dark:opacity-[0.02]" viewBox="0 0 800 800" xmlns="http://www.w3.org/2000/svg">
           <defs>
             <pattern height="40" id="grid" patternUnits="userSpaceOnUse" width="40">
               <path d="M 40 0 L 0 0 0 40" fill="none" stroke="currentColor" strokeWidth="1"></path>
@@ -395,10 +396,10 @@ export default function Register({ onLoginSuccess }) {
       </section>
 
       {/* Mobile Floating Interaction */}
-      <div className="md:hidden fixed bottom-6 left-1/2 -translate-x-1/2 w-max px-6 py-3 bg-neutral-900 border border-neutral-800 rounded-full shadow-lg z-50 flex items-center gap-4">
-        <span className="text-xs font-bold tracking-wider text-neutral-400">SECURE CLOUD</span>
-        <div className="w-1.5 h-1.5 rounded-full bg-[#73D9B7] animate-pulse-primary"></div>
-        <span className="text-xs font-bold tracking-wider text-neutral-400">LOCAL AI</span>
+      <div className="md:hidden fixed bottom-6 left-1/2 -translate-x-1/2 w-max px-6 py-3 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-full shadow-lg z-50 flex items-center gap-4 transition-colors duration-300">
+        <span className="text-xs font-bold tracking-wider text-neutral-500 dark:text-neutral-400">SECURE CLOUD</span>
+        <div className="w-1.5 h-1.5 rounded-full bg-[#067357] dark:bg-[#73D9B7] animate-pulse-primary"></div>
+        <span className="text-xs font-bold tracking-wider text-neutral-500 dark:text-neutral-400">LOCAL AI</span>
       </div>
 
       <style>{`
@@ -410,8 +411,16 @@ export default function Register({ onLoginSuccess }) {
           animation: pulse-primary 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
         }
         .custom-focus:focus {
+          border-color: #48a687 !important;
+          box-shadow: 0 0 0 3px rgba(72, 166, 135, 0.15) !important;
+        }
+        .dark .custom-focus:focus {
           border-color: #73D9B7 !important;
           box-shadow: 0 0 0 3px rgba(115, 217, 183, 0.15) !important;
+        }
+        .glassmorphism {
+          backdrop-filter: blur(8px);
+          -webkit-backdrop-filter: blur(8px);
         }
       `}</style>
     </main>
