@@ -120,6 +120,9 @@ export default function Sidebar({
         <NavItem to="/" icon="dashboard" label="Dashboard" isCollapsed={isCollapsed} />
         <NavItem to="/library" icon="library_books" label="My Library" isCollapsed={isCollapsed} />
         <NavItem to="/settings" icon="settings" label="Settings" isCollapsed={isCollapsed} />
+        {user?.role === 'admin' && (
+          <NavItem to="/admin" icon="admin_panel_settings" label="Admin Portal" isCollapsed={isCollapsed} />
+        )}
       </nav>
 
       {/* Footer Area: Profile & Auth Button */}

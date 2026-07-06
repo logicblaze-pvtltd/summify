@@ -3,5 +3,12 @@
   "processingCore": "GPU (Metal/CUDA)",
   "geminiApiKey": "",
   "autoPurgeDays": "Never",
-  "onDiskEncryption": true
+  "onDiskEncryption": true,
+  "portalName": "Summify",
+  "maintenanceMode": false,
+  "guestUploadsEnabled": true,
+  "apiRateLimit": 120,
+  "modelName": "Gemini 2.5 Flash",
+  "encryption": "AES-256",
+  "auditRetentionDays": 90
 }

@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useFeedback } from '../components/FeedbackProvider';
 import { useGoogleLogin } from '@react-oauth/google';
 import SumifyLoader from '../components/SumifyLoader';
+import { apiFetch } from '../lib/api';
 export default function Register({ onLoginSuccess }) {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -49,7 +50,7 @@ export default function Register({ onLoginSuccess }) {
     onSuccess: async (tokenResponse) => {
       try {
         showToast({ title: 'Connecting', message: 'Verifying with Summify...', tone: 'info' });
-        const res = await fetch('/api/auth/google', {
+        const res = await apiFetch('/api/auth/google', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -130,7 +131,7 @@ export default function Register({ onLoginSuccess }) {
     setLoading(true);
 
     try {
-      const res = await fetch('/api/auth/register', {
+      const res = await apiFetch('/api/auth/register', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

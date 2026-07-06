@@ -245,6 +245,47 @@ export async function initDatabase() {
     await pool.query(createDocumentsTableQuery);
     await pool.query(`ALTER TABLE documents ADD COLUMN IF NOT EXISTS text_file_path TEXT NULL`);
 
+    // Safely add role, status, and plan columns to users table
+    const [roleColumns] = await pool.query("SHOW COLUMNS FROM users LIKE 'role'");
+    if (roleColumns.length === 0) {
+      await pool.query("ALTER TABLE users ADD COLUMN role VARCHAR(32) NOT NULL DEFAULT 'user'");
+    }
+
+    const [statusColumns] = await pool.query("SHOW COLUMNS FROM users LIKE 'status'");
+    if (statusColumns.length === 0) {
+      await pool.query("ALTER TABLE users ADD COLUMN status VARCHAR(32) NOT NULL DEFAULT 'Active'");
+    }
+
+    const [planColumns] = await pool.query("SHOW COLUMNS FROM users LIKE 'plan'");
+    if (planColumns.length === 0) {
+      await pool.query("ALTER TABLE users ADD COLUMN plan VARCHAR(32) NOT NULL DEFAULT 'Free Starter'");
+    }
+
+    // Create audit_logs table
+    const createAuditLogsTableQuery = `
+      CREATE TABLE IF NOT EXISTS audit_logs (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        actor VARCHAR(255) NOT NULL,
+        event VARCHAR(255) NOT NULL,
+        severity VARCHAR(32) NOT NULL DEFAULT 'Info',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `;
+    await pool.query(createAuditLogsTableQuery);
+
+    // Seed default admin user
+    const adminEmail = "admin@lumina-ai.com";
+    const [adminRows] = await pool.query("SELECT * FROM users WHERE email = ?", [adminEmail]);
+    if (adminRows.length === 0) {
+      const { hashPassword } = await import("./services/authService.js");
+      const passwordHash = hashPassword("admin123");
+      await pool.query(
+        "INSERT INTO users (name, email, password_hash, role, status, plan) VALUES (?, ?, ?, ?, ?, ?)",
+        ["Admin User", adminEmail, passwordHash, "admin", "Active", "Enterprise AI"]
+      );
+      console.log("Seeded default admin user: admin@lumina-ai.com / admin123");
+    }
+
     console.log("MySQL database initialized successfully.");
   } catch (error) {
     console.error("Failed to initialize MySQL database:", error.message);
@@ -260,7 +301,7 @@ export async function getUserByEmail(email) {
 
 export async function getUserById(id) {
   if (!pool) throw new Error("Database not initialized.");
-  const [rows] = await pool.query("SELECT id, name, email, created_at FROM users WHERE id = ?", [id]);
+  const [rows] = await pool.query("SELECT id, name, email, role, status, plan, created_at FROM users WHERE id = ?", [id]);
   return rows[0] || null;
 }
 
@@ -414,4 +455,67 @@ export async function reassignDocumentsByUserId(fromUserId, toUserId) {
     [toUserId, fromUserId]
   );
   return result.affectedRows || 0;
+}
+
+export async function getUsersWithDocCount() {
+  if (!pool) throw new Error("Database not initialized.");
+  const [rows] = await pool.query(`
+    SELECT u.id, u.name, u.email, u.role, u.status, u.plan, u.created_at,
+           COUNT(d.id) AS documents
+    FROM users u
+    LEFT JOIN documents d ON CAST(u.id AS CHAR) = d.user_id
+    GROUP BY u.id
+    ORDER BY u.created_at DESC
+  `);
+  return rows;
+}
+
+export async function getAllDocumentsWithOwner() {
+  if (!pool) throw new Error("Database not initialized.");
+  const [rows] = await pool.query(`
+    SELECT d.*, u.name AS owner_name, u.email AS owner_email
+    FROM documents d
+    LEFT JOIN users u ON d.user_id = CAST(u.id AS CHAR)
+    ORDER BY d.created_at DESC
+  `);
+  return rows.map(row => ({
+    ...normalizeDocumentRow(row),
+    owner: row.owner_name || row.user_id,
+    ownerEmail: row.owner_email || 'N/A'
+  }));
+}
+
+export async function getAuditLogs() {
+  if (!pool) throw new Error("Database not initialized.");
+  const [rows] = await pool.query("SELECT * FROM audit_logs ORDER BY created_at DESC LIMIT 100");
+  return rows.map(row => ({
+    id: String(row.id),
+    actor: row.actor,
+    event: row.event,
+    severity: row.severity,
+    time: row.created_at
+  }));
+}
+
+export async function createAuditLog(actor, event, severity = 'Info') {
+  if (!pool) throw new Error("Database not initialized.");
+  await pool.query(
+    "INSERT INTO audit_logs (actor, event, severity) VALUES (?, ?, ?)",
+    [actor, event, severity]
+  );
+}
+
+export async function updateUserStatus(userId, status) {
+  if (!pool) throw new Error("Database not initialized.");
+  await pool.query("UPDATE users SET status = ? WHERE id = ?", [status, userId]);
+}
+
+export async function updateUserPlan(userId, plan) {
+  if (!pool) throw new Error("Database not initialized.");
+  await pool.query("UPDATE users SET plan = ? WHERE id = ?", [plan, userId]);
+}
+
+export async function deleteUserById(userId) {
+  if (!pool) throw new Error("Database not initialized.");
+  await pool.query("DELETE FROM users WHERE id = ?", [userId]);
 }

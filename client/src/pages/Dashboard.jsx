@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useFeedback } from '../components/FeedbackProvider';
+import { apiFetch, apiUrl } from '../lib/api';
 
 export default function Dashboard({ onSelectDocument, documents, refreshDocuments, user, guestQuota }) {
   const navigate = useNavigate();
@@ -22,6 +23,7 @@ export default function Dashboard({ onSelectDocument, documents, refreshDocument
     'Creating embeddings',
     'Generating summary',
   ];
+  const token = localStorage.getItem('token');
   // Stats calculations based on actual documents
   const totalAnalyzed = documents.length;
   const guestLimit = guestQuota?.limit ?? 5;
@@ -44,7 +46,7 @@ export default function Dashboard({ onSelectDocument, documents, refreshDocument
     if (processingFile) {
       intervalId = setInterval(async () => {
         try {
-          const res = await fetch(`/api/documents/${processingFile.id}`, {
+          const res = await apiFetch(`/api/documents/${processingFile.id}`, {
             headers: { 'x-disable-global-loader': '1' },
           });
           if (res.ok) {
@@ -154,12 +156,37 @@ export default function Dashboard({ onSelectDocument, documents, refreshDocument
     formData.append('pdf', file);
 
     try {
-      const response = await fetch('/api/upload', {
-        method: 'POST',
-        headers: {
-          'x-disable-global-loader': '1',
-        },
-        body: formData
+      const response = await new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', apiUrl('/api/upload'), true);
+        xhr.responseType = 'text';
+
+        xhr.onload = () => {
+          resolve({
+            ok: xhr.status >= 200 && xhr.status < 300,
+            status: xhr.status,
+            json: async () => {
+              try {
+                return JSON.parse(xhr.responseText || '{}');
+              } catch {
+                return {};
+              }
+            }
+          });
+        };
+
+        xhr.onerror = () => reject(new Error('Network error while uploading file.'));
+
+        if (token) {
+          xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+        } else {
+          const guestId = localStorage.getItem('guestSessionId');
+          if (guestId) {
+            xhr.setRequestHeader('X-Guest-ID', guestId);
+          }
+        }
+
+        xhr.send(formData);
       });
 
       if (!response.ok) {
@@ -228,7 +255,7 @@ export default function Dashboard({ onSelectDocument, documents, refreshDocument
 
     if (confirmed) {
       try {
-        const res = await fetch(`/api/documents/${id}`, { method: 'DELETE' });
+        const res = await apiFetch(`/api/documents/${id}`, { method: 'DELETE' });
         if (res.ok) {
           refreshDocuments();
           showToast({
@@ -522,7 +549,7 @@ export default function Dashboard({ onSelectDocument, documents, refreshDocument
                       <span className="text-[12px] font-medium">{doc.uploadDate}</span>
                     </div>
                     <div className="flex gap-2">
-                      <a href={`/api/export/${doc.id}/txt`} download className="p-2 rounded-xl hover:bg-surface-container text-outline hover:text-primary transition-all"><span className="material-symbols-outlined text-lg">download</span></a>
+                      <a href={apiUrl(`/api/export/${doc.id}/txt`)} download className="p-2 rounded-xl hover:bg-surface-container text-outline hover:text-primary transition-all"><span className="material-symbols-outlined text-lg">download</span></a>
                       <button onClick={(e) => handleDeleteDoc(e, doc.id)} className="p-2 rounded-xl hover:bg-surface-container text-outline hover:text-error transition-all"><span className="material-symbols-outlined text-lg">delete</span></button>
                     </div>
                   </div>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
+import { Routes, Route, useNavigate, useLocation, Navigate } from 'react-router-dom';
 import Sidebar from './components/Sidebar';
 import SumifyLoader from './components/SumifyLoader';
 import Dashboard from './pages/Dashboard';
@@ -8,6 +8,8 @@ import Chat from './pages/Chat';
 import Settings from './pages/Settings';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import { apiFetch } from './lib/api';
+import AdminApp from './admin/AdminApp';
 
 export default function App() {
   const [user, setUser] = useState(() => {
@@ -39,19 +41,20 @@ export default function App() {
   useEffect(() => {
     const publicRoutes = ['/login', '/register'];
     const isPublic = publicRoutes.includes(location.pathname);
-    
+
     if (token && isPublic) {
-      navigate('/');
+      // Admin users go to /admin, everyone else to /
+      navigate(user?.role === 'admin' ? '/admin' : '/');
     }
-  }, [token, location.pathname, navigate]);
+  }, [token, user, location.pathname, navigate]);
 
   // Fetch documents from server
   const refreshDocuments = async () => {
     setIsLoading(true);
     try {
       const [documentsResponse, quotaResponse] = await Promise.all([
-        fetch('/api/documents'),
-        token ? Promise.resolve(null) : fetch('/api/guest/quota')
+        apiFetch('/api/documents'),
+        token ? Promise.resolve(null) : apiFetch('/api/guest/quota')
       ]);
 
       if (documentsResponse && documentsResponse.ok) {
@@ -109,15 +112,28 @@ export default function App() {
     let activeRequests = 0;
 
     const wrappedFetch = (resource, init = {}) => {
-      const request = new Request(resource, init);
-      const disableLoader = request.headers.get('x-disable-global-loader') === '1';
+      // Check disable-loader header without consuming the request body
+      let disableLoader = false;
+      try {
+        const headers = init?.headers;
+        if (headers instanceof Headers) {
+          disableLoader = headers.get('x-disable-global-loader') === '1';
+        } else if (headers && typeof headers === 'object') {
+          disableLoader =
+            headers['x-disable-global-loader'] === '1' ||
+            headers['X-Disable-Global-Loader'] === '1';
+        }
+      } catch {
+        // ignore header inspection errors
+      }
+
       if (disableLoader) {
-        return originalFetch(request);
+        return originalFetch(resource, init);
       }
 
       activeRequests += 1;
       setIsLoading(true);
-      return originalFetch(request).finally(() => {
+      return originalFetch(resource, init).finally(() => {
         activeRequests -= 1;
         if (activeRequests <= 0) {
           activeRequests = 0;
@@ -161,6 +177,10 @@ export default function App() {
     localStorage.setItem('user', JSON.stringify(newUser));
     setToken(newToken);
     setUser(newUser);
+    // Redirect admin users straight to the admin panel
+    if (newUser?.role === 'admin') {
+      navigate('/admin');
+    }
   };
 
   const handleLogout = () => {
@@ -193,6 +213,11 @@ export default function App() {
   };
 
   const isAuthPage = location.pathname === '/login' || location.pathname === '/register';
+  const isAdminRoute = location.pathname.startsWith('/admin');
+
+  if (isAdminRoute) {
+    return <AdminApp user={user} token={token} />;
+  }
 
   return (
     <div className={`flex min-h-screen bg-background text-on-surface transition-colors duration-200 ${theme === 'dark' ? 'dark-mode' : ''}`}>

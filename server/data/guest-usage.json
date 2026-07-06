@@ -5,8 +5,23 @@
     "resetAt": "2026-08-03T11:01:37.212Z"
   },
   "guest_default": {
-    "used": 0,
+    "used": 5,
     "periodStart": "2026-07-04T07:21:55.393Z",
     "resetAt": "2026-08-04T07:21:55.393Z"
+  },
+  "guest_baaeszid72aixf3ilr2fi": {
+    "used": 5,
+    "periodStart": "2026-07-06T09:54:05.450Z",
+    "resetAt": "2026-08-06T09:54:05.450Z"
+  },
+  "test-guest-123": {
+    "used": 4,
+    "periodStart": "2026-07-06T10:23:40.632Z",
+    "resetAt": "2026-08-06T10:23:40.632Z"
+  },
+  "guest_2zgr2753b8wskriyqunhd9": {
+    "used": 0,
+    "periodStart": "2026-07-06T10:42:57.647Z",
+    "resetAt": "2026-08-06T10:42:57.647Z"
   }
 }

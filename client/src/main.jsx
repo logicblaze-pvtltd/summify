@@ -3,33 +3,20 @@ import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import { FeedbackProvider } from './components/FeedbackProvider'
 import { GoogleOAuthProvider } from '@react-oauth/google';
+import '@fontsource/inter/400.css';
+import '@fontsource/inter/500.css';
+import '@fontsource/inter/600.css';
+import '@fontsource/inter/700.css';
+import '@fontsource/inter/800.css';
+import '@fontsource/jetbrains-mono/400.css';
+import '@fontsource/material-symbols-outlined';
 import './tailwind.css'
 import App from './App.jsx'
-// Generate guest session ID if not present
-let guestSessionId = localStorage.getItem('guestSessionId');
-if (!guestSessionId) {
-  guestSessionId = 'guest_' + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-  localStorage.setItem('guestSessionId', guestSessionId);
-}
+import { ensureGuestSessionId } from './lib/session';
+import { installFetchInterceptor } from './lib/http';
 
-// Global Fetch Interceptor to attach JWT token or guest ID to all API calls automatically
-const originalFetch = window.fetch;
-window.fetch = async function (url, options = {}) {
-  const token = localStorage.getItem('token');
-  const headers = { ...options.headers };
-  
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  } else {
-    const guestId = localStorage.getItem('guestSessionId');
-    if (guestId) {
-      headers['X-Guest-ID'] = guestId;
-    }
-  }
-  
-  options.headers = headers;
-  return originalFetch(url, options);
-};
+ensureGuestSessionId();
+installFetchInterceptor();
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>

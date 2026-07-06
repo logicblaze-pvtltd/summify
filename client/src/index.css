@@ -1,4 +1,4 @@
-﻿/* Theme variables and helper classes moved from client/index.html */
+/* Theme variables and helper classes moved from client/index.html */
 :root {
   --primary: #007A5E;
   --on-primary: #ffffff;
@@ -124,6 +124,19 @@
 }
 
 .material-symbols-outlined {
+  font-family: 'Material Symbols Outlined';
+  font-weight: normal;
+  font-style: normal;
+  font-size: 24px;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  -webkit-font-feature-settings: 'liga';
+  -webkit-font-smoothing: antialiased;
   font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
 }
 .fill-icon {
@@ -258,6 +271,12 @@ body {
   box-shadow: 0 8px 32px 0 var(--glass-shadow);
 }
 
+/* Admin panels need a slightly more visible border in dark mode */
+.dark-mode .admin-sidebar,
+.dark-mode .admin-header {
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
 /* Override hardcoded white backgrounds (common utility) */
 .dark-mode .bg-white {
   background-color: var(--surface-container-highest) !important;
@@ -295,12 +314,12 @@ body {
   color: var(--on-surface) !important;
 }
 
-/* Sidebar & Header structural overrides (keep !important to beat inline bg colors) */
-.dark-mode aside {
+/* Sidebar & Header structural overrides — only for main app, not admin */
+.dark-mode aside:not(.admin-sidebar) {
   background-color: var(--surface-container-low) !important;
   border-color: var(--outline-variant) !important;
 }
-.dark-mode header {
+.dark-mode header:not(.admin-header) {
   background-color: var(--surface-container-highest) !important;
 }
 

@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useFeedback } from '../components/FeedbackProvider';
 import { useGoogleLogin } from '@react-oauth/google';
+import { apiFetch } from '../lib/api';
 
 export default function Login({ onLoginSuccess }) {
   const [email, setEmail] = useState('');
@@ -47,7 +48,7 @@ export default function Login({ onLoginSuccess }) {
     onSuccess: async (tokenResponse) => {
       try {
         showToast({ title: 'Connecting', message: 'Verifying with Summify...', tone: 'info' });
-        const res = await fetch('/api/auth/google', {
+        const res = await apiFetch('/api/auth/google', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -119,7 +120,7 @@ export default function Login({ onLoginSuccess }) {
     setLoading(true);
 
     try {
-      const res = await fetch('/api/auth/login', {
+      const res = await apiFetch('/api/auth/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

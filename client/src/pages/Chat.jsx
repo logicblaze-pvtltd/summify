@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useFeedback } from '../components/FeedbackProvider';
+import { apiFetch } from '../lib/api';
 
 export default function Chat({ documents, refreshDocuments, onNewSummary, user }) {
   const { showAlert, showConfirm, showToast } = useFeedback();
@@ -33,7 +34,7 @@ export default function Chat({ documents, refreshDocuments, onNewSummary, user }
       setLoadingDoc(true);
       const fetchFullDoc = async () => {
         try {
-          const res = await fetch(`/api/documents/${docId}`, {
+          const res = await apiFetch(`/api/documents/${docId}`, {
             headers: { 'x-disable-global-loader': '1' },
           });
           if (res.ok && isMounted) {
@@ -93,7 +94,7 @@ export default function Chat({ documents, refreshDocuments, onNewSummary, user }
     setLoading(true);
 
     try {
-      const response = await fetch(`/api/chat/${docId}`, {
+      const response = await apiFetch(`/api/chat/${docId}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -131,7 +132,7 @@ export default function Chat({ documents, refreshDocuments, onNewSummary, user }
 
     if (confirmed) {
       try {
-        const res = await fetch(`/api/chat/${docId}/clear`, {
+        const res = await apiFetch(`/api/chat/${docId}/clear`, {
           method: 'POST',
           headers: { 'x-disable-global-loader': '1' },
         });

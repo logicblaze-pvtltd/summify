@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useFeedback } from '../components/FeedbackProvider';
+import { apiFetch, apiUrl } from '../lib/api';
 
 export default function Library({ documents, refreshDocuments, onSelectDocument }) {
   const { showAlert, showConfirm, showToast } = useFeedback();
@@ -71,7 +72,7 @@ export default function Library({ documents, refreshDocuments, onSelectDocument 
 
     try {
       const promises = Array.from(selectedDocs).map((id) =>
-        fetch(`/api/documents/${id}`, { method: 'DELETE' })
+        apiFetch(`/api/documents/${id}`, { method: 'DELETE' })
       );
       const responses = await Promise.all(promises);
       if (!responses.every((response) => response.ok)) {
@@ -102,7 +103,7 @@ export default function Library({ documents, refreshDocuments, onSelectDocument 
       const doc = documents.find(d => d.id === id);
       if (doc) {
         const link = document.createElement('a');
-        link.href = `/api/export/${id}/txt`;
+        link.href = apiUrl(`/api/export/${id}/txt`);
         link.download = `${doc.fileName.replace('.pdf', '')}_summary.txt`;
         document.body.appendChild(link);
         link.click();
@@ -359,7 +360,7 @@ export default function Library({ documents, refreshDocuments, onSelectDocument 
                       </span>
                       
                       <a
-                        href={`/api/export/${doc.id}/txt`}
+                        href={apiUrl(`/api/export/${doc.id}/txt`)}
                         download
                         className="p-2 text-outline hover:text-primary rounded-lg transition-colors"
                         title="Download Summary"

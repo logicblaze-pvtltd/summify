@@ -13,7 +13,17 @@ export default defineConfig({
         secure: false,
         timeout: 600000,
         proxyTimeout: 600000,
-        ws: false
+        ws: false,
+        configure: (proxy) => {
+          // Fix: Vite's http-proxy strips the Content-Type boundary on multipart/form-data
+          // requests. This hook restores the original Content-Type so Multer can parse uploads.
+          proxy.on('proxyReq', (proxyReq, req) => {
+            const contentType = req.headers['content-type'];
+            if (contentType && contentType.includes('multipart/form-data')) {
+              proxyReq.setHeader('content-type', contentType);
+            }
+          });
+        }
       }
     }
   }

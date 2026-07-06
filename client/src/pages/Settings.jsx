@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useFeedback } from '../components/FeedbackProvider';
+import { apiFetch } from '../lib/api';
 
 export default function Settings({ theme, onThemeChange, refreshDocuments }) {
   const { showAlert, showConfirm, showToast } = useFeedback();
@@ -12,7 +13,7 @@ export default function Settings({ theme, onThemeChange, refreshDocuments }) {
 
   // Fetch settings from server
   useEffect(() => {
-    fetch('/api/settings')
+    apiFetch('/api/settings')
       .then(res => res.json())
       .then(data => {
         if (data) {
@@ -32,7 +33,7 @@ export default function Settings({ theme, onThemeChange, refreshDocuments }) {
   const handleSave = async () => {
     setSaving(true);
     try {
-      const res = await fetch('/api/settings', {
+      const res = await apiFetch('/api/settings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(config)
@@ -70,13 +71,13 @@ export default function Settings({ theme, onThemeChange, refreshDocuments }) {
 
     if (confirmed) {
       try {
-        const docsRes = await fetch('/api/documents');
+        const docsRes = await apiFetch('/api/documents');
         if (!docsRes.ok) {
           throw new Error('Unable to load documents for deletion.');
         }
         const docs = await docsRes.json();
         const deletePromises = docs.map((doc) =>
-          fetch(`/api/documents/${doc.id}`, { method: 'DELETE' })
+          apiFetch(`/api/documents/${doc.id}`, { method: 'DELETE' })
         );
         const deleteResults = await Promise.all(deletePromises);
         if (!deleteResults.every((result) => result.ok)) {
